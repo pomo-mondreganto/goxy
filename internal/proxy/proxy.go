@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -9,47 +10,44 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var logger = logrus.StandardLogger()
+var (
+	ErrAlreadyRunning  = errors.New("proxy is already running")
+	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
+)
 
 const (
-	BUF_SIZE = 65536
+	BufSize = 65536
 )
 
 type TcpProxy struct {
 	Port       int
 	RemoteAddr string
-	ctx        context.Context
-	cancel     context.CancelFunc
+	closing    bool
 	wg         *sync.WaitGroup
 	listener   net.Listener
-}
-
-func (t *TcpProxy) Stop() {
-	t.cancel()
-	t.wg.Wait()
-	t.wg = nil
+	logger     *logrus.Entry
 }
 
 func (t *TcpProxy) HandleConn(conn net.Conn) {
-	logger.Infof("Got connection")
-	remoteConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", t.RemoteAddr, t.Port))
+	t.logger.Debugf("Got new connection from: %v", conn.RemoteAddr())
+	remoteConn, err := net.Dial("tcp", t.RemoteAddr)
 	if err != nil {
-		logger.Errorf("Failed to connect to remote server: %v", err)
+		t.logger.Errorf("Failed to connect to remote server: %v", err)
 		return
 	}
 	for {
-		data := make([]byte, BUF_SIZE)
+		data := make([]byte, BufSize)
 		n, err := conn.Read(data)
 		if err != nil {
-			logger.Infof("Failed to read from connection: %v", err)
+			t.logger.Infof("Failed to read from connection: %v", err)
 			return
 		}
 
-		logger.Infof("Got %d bytes", n)
+		t.logger.Debugf("Got %d bytes", n)
 
 		_, err = remoteConn.Write(data[:n])
 		if err != nil {
-			logger.Errorf("Failed to remote server: %v", err)
+			t.logger.Errorf("Failed to write to connection: %v", err)
 			return
 		}
 	}
@@ -58,17 +56,26 @@ func (t *TcpProxy) HandleConn(conn net.Conn) {
 func (t *TcpProxy) Serve() {
 	defer t.wg.Done()
 
+	t.logger.Infof("Starting")
+
 	var connections []net.Conn
 	defer func() {
 		for _, conn := range connections {
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				t.logger.Fatal("Error closing connection: ", err)
+			}
 		}
 	}()
 
 	for {
+		t.logger.Debugf("Listening for connections")
 		conn, err := t.listener.Accept()
 		if err != nil {
-			logger.Warnf("proxy stopped: %v", err)
+			if t.closing {
+				t.logger.Info("Listener exiting")
+			} else {
+				t.logger.Errorf("proxy stopped: %T: %v", err, err)
+			}
 			return
 		}
 		connections = append(connections, conn)
@@ -78,14 +85,13 @@ func (t *TcpProxy) Serve() {
 
 func (t *TcpProxy) Start() error {
 	if t.wg != nil {
-		// already running
-		return fmt.Errorf("proxy already running")
+		return ErrAlreadyRunning
 	}
 
 	var err error
 	t.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", t.Port))
 	if err != nil {
-		return err
+		return fmt.Errorf("running listen: %w", err)
 	}
 
 	t.wg = &sync.WaitGroup{}
@@ -94,8 +100,33 @@ func (t *TcpProxy) Start() error {
 	return nil
 }
 
-func (t *TcpProxy) Wait() {
-	if t.wg != nil {
-		t.wg.Wait()
+func (t *TcpProxy) Shutdown(ctx context.Context) error {
+	t.closing = true
+	if err := t.listener.Close(); err != nil {
+		return fmt.Errorf("closing listener: %w", err)
 	}
+
+	done := make(chan interface{}, 1)
+	go func() {
+		t.wg.Wait()
+		done <- nil
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ErrShutdownTimeout
+	case <-done:
+		break
+	}
+	return nil
+}
+
+func NewTcpProxy(remoteHost string, remotePort, localPort int) *TcpProxy {
+	logger := logrus.WithField("type", "tcp").WithField("port", localPort)
+	p := &TcpProxy{
+		logger:     logger,
+		Port:       localPort,
+		RemoteAddr: fmt.Sprintf("%s:%d", remoteHost, remotePort),
+	}
+	return p
 }

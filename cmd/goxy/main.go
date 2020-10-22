@@ -1,18 +1,35 @@
 package main
 
 import (
+	"context"
+	"github.com/sirupsen/logrus"
 	"goxy/internal/proxy"
-	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
+func init() {
+	logrus.SetLevel(logrus.DebugLevel)
+}
+
 func main() {
-	p := proxy.TcpProxy{
-		Port:       8080,
-		RemoteAddr: "127.0.0.1",
+	p := proxy.NewTcpProxy("127.0.0.1", 1337, 1338)
+	go func() {
+		if err := p.Start(); err != nil {
+			logrus.Fatalf("Error starting tcp proxy: %v", err)
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	<-c
+
+	logrus.Info("Shutting down tcp proxy")
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
+	if err := p.Shutdown(ctx); err != nil {
+		logrus.Fatalf("Error shutting down tcp proxy: %v", err)
 	}
-	err := p.Start()
-	if err != nil {
-		log.Fatalf("Failed to create proxy: %v", err)
-	}
-	p.Wait()
+	logrus.Info("Shutdown successful")
 }
