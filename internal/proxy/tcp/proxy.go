@@ -82,7 +82,7 @@ func (p *Proxy) handleConnection(conn *Connection, ingress bool) error {
 
 			conn.mu.Lock()
 			if conn.Context.MustDrop {
-				logger.Debugf("Dropping connection", ingress)
+				logger.Debugf("Dropping connection")
 				conn.mu.Unlock()
 				return ErrDropped
 			}
@@ -123,13 +123,14 @@ func (p *Proxy) HandleConn(conn net.Conn) {
 
 	c := NewConnection(conn, localConn)
 
+	wg := sync.WaitGroup{}
 	handler := func(ingress bool, other net.Conn) {
 		logger := p.logger.WithField("ingress", ingress)
 		defer func() {
 			if err := c.Close(); err != nil {
 				logger.Fatal("Error closing bidi connection: ", err)
 			}
-			p.wg.Done()
+			wg.Done()
 		}()
 		if err := p.handleConnection(c, ingress); err != nil {
 			if !isConnectionClosedErr(err) {
@@ -140,9 +141,10 @@ func (p *Proxy) HandleConn(conn net.Conn) {
 		}
 	}
 
-	p.wg.Add(2)
-	handler(true, c.Local)
-	handler(false, c.Remote)
+	wg.Add(2)
+	go handler(true, c.Local)
+	go handler(false, c.Remote)
+	wg.Wait()
 }
 
 func (p *Proxy) Serve() {
