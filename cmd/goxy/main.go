@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"goxy/internal/common"
@@ -14,16 +15,22 @@ import (
 	"time"
 )
 
+var (
+	configFile = flag.String("config", "config.yml", "Path to the config file in YAML format")
+)
+
 func init() {
 	logrus.SetLevel(logrus.DebugLevel)
-	viper.SetConfigFile("config.yml")
+}
+
+func main() {
+	flag.Parse()
+	viper.SetConfigFile(*configFile)
 	viper.SetConfigType("yaml")
 	if err := viper.ReadInConfig(); err != nil {
 		logrus.Fatal("Error reading config from yaml: ", err)
 	}
-}
 
-func main() {
 	pc := new(common.ProxyConfig)
 	if err := viper.Unmarshal(&pc); err != nil {
 		logrus.Fatal("Error parsing proxy config from file: ", err)
