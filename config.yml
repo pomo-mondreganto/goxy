@@ -1,0 +1,22 @@
+rules:
+  - name: regex_kek
+    type: tcp::regex
+    args:
+      - "ke?k"
+  - name: contains_attack
+    type: tcp::contains
+    args:
+      - "attack"
+
+services:
+  - name: test tcp
+    type: tcp
+    listen: 0.0.0.0:1337
+    target: 127.0.0.1:1338
+    filters:
+      - rule: regex_kek
+        verdict: inc::keks
+      - rule: egress
+        verdict: "alert::show keks"
+      - rule: contains_attack
+        verdict: drop
