@@ -127,6 +127,7 @@ func (p *Proxy) HandleConn(conn net.Conn) {
 	handler := func(ingress bool, other net.Conn) {
 		logger := p.logger.WithField("ingress", ingress)
 		defer func() {
+			logger.Debug("Closing other end of connection")
 			if err := other.Close(); err != nil {
 				logger.Fatal("Error closing bidi connection: ", err)
 			}
