@@ -10,6 +10,7 @@ import (
 	"goxy/internal/proxy/tcp"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -17,19 +18,39 @@ import (
 
 var (
 	configFile = flag.String("config", "config.yml", "Path to the config file in YAML format")
+	logLevel   = flag.String("log_level", "DEBUG", "Log level {INFO|DEBUG|WARNING|ERROR}")
 )
 
-func init() {
-	logrus.SetLevel(logrus.DebugLevel)
+func setLogLevel() {
+	switch strings.ToUpper(*logLevel) {
+	case "DEBUG":
+		logrus.SetLevel(logrus.DebugLevel)
+	case "INFO":
+		logrus.SetLevel(logrus.InfoLevel)
+	case "WARNING":
+		logrus.SetLevel(logrus.WarnLevel)
+	case "ERROR":
+		logrus.SetLevel(logrus.ErrorLevel)
+	default:
+		logrus.Errorf("Invalid log level provided: %s")
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
 }
 
-func main() {
-	flag.Parse()
+func parseConfig() {
 	viper.SetConfigFile(*configFile)
 	viper.SetConfigType("yaml")
 	if err := viper.ReadInConfig(); err != nil {
 		logrus.Fatal("Error reading config from yaml: ", err)
 	}
+}
+
+func main() {
+	flag.Parse()
+
+	setLogLevel()
+	parseConfig()
 
 	pc := new(common.ProxyConfig)
 	if err := viper.Unmarshal(&pc); err != nil {
