@@ -1,15 +1,14 @@
-package tcp
+package common
 
 import (
 	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"goxy/internal/common"
 	"strings"
 )
 
 type Verdict interface {
-	Mutate(ctx *common.ConnectionContext) error
+	Mutate(ctx *ConnectionContext) error
 }
 
 func ParseVerdict(desc string) (Verdict, error) {
@@ -44,14 +43,14 @@ func ParseVerdict(desc string) (Verdict, error) {
 
 type VerdictDrop struct{}
 
-func (v *VerdictDrop) Mutate(ctx *common.ConnectionContext) error {
+func (v *VerdictDrop) Mutate(ctx *ConnectionContext) error {
 	ctx.MustDrop = true
 	return nil
 }
 
 type VerdictAccept struct{}
 
-func (v *VerdictAccept) Mutate(ctx *common.ConnectionContext) error {
+func (v *VerdictAccept) Mutate(ctx *ConnectionContext) error {
 	ctx.MustAccept = true
 	return nil
 }
@@ -60,7 +59,7 @@ type VerdictIncrement struct {
 	Key string
 }
 
-func (v *VerdictIncrement) Mutate(ctx *common.ConnectionContext) error {
+func (v *VerdictIncrement) Mutate(ctx *ConnectionContext) error {
 	ctx.Counters[v.Key] += 1
 	return nil
 }
@@ -69,7 +68,7 @@ type VerdictDecrement struct {
 	Key string
 }
 
-func (v *VerdictDecrement) Mutate(ctx *common.ConnectionContext) error {
+func (v *VerdictDecrement) Mutate(ctx *ConnectionContext) error {
 	ctx.Counters[v.Key] -= 1
 	return nil
 }
@@ -78,7 +77,7 @@ type VerdictAlert struct {
 	Logger *logrus.Entry
 }
 
-func (v *VerdictAlert) Mutate(ctx *common.ConnectionContext) error {
+func (v *VerdictAlert) Mutate(ctx *ConnectionContext) error {
 	v.Logger.WithFields(ctx.DumpFields()).Warningf("Alert triggered")
 	return nil
 }

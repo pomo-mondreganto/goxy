@@ -1,4 +1,4 @@
-package tcp
+package filters
 
 var DefaultRules = map[string]Rule{
 	"ingress": &IngressRule{},

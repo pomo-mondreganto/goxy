@@ -6,8 +6,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"goxy/internal/common"
-	tcpfilters "goxy/internal/filters/tcp"
-	"goxy/internal/proxy/tcp"
+	tcp2 "goxy/internal/proxy/tcp"
+	"goxy/internal/proxy/tcp/filters"
 	"os"
 	"os/signal"
 	"strings"
@@ -57,15 +57,15 @@ func main() {
 		logrus.Fatal("Error parsing proxy config from file: ", err)
 	}
 
-	tcpRuleSet, err := tcpfilters.NewRuleSet(pc.Rules)
+	tcpRuleSet, err := filters.NewRuleSet(pc.Rules)
 	if err != nil {
 		logrus.Fatal("Error creating tcp ruleset: ", err)
 	}
 
-	tcpProxies := make([]*tcp.Proxy, 0)
+	tcpProxies := make([]*tcp2.Proxy, 0)
 	for _, s := range pc.Services {
 		if s.Type == "tcp" {
-			p, err := tcp.NewProxy(&s, tcpRuleSet)
+			p, err := tcp2.NewProxy(&s, tcpRuleSet)
 			if err != nil {
 				logrus.Fatal("Error creating tcp proxy: ", err)
 			}
@@ -76,7 +76,7 @@ func main() {
 	wg := sync.WaitGroup{}
 	for _, p := range tcpProxies {
 		wg.Add(1)
-		go func(p *tcp.Proxy) {
+		go func(p *tcp2.Proxy) {
 			defer wg.Done()
 			if err := p.Start(); err != nil {
 				logrus.Fatalf("Error starting tcp proxy: %v", err)
@@ -91,7 +91,7 @@ func main() {
 	logrus.Info("Shutting down tcp proxies")
 	for _, p := range tcpProxies {
 		wg.Add(1)
-		go func(p *tcp.Proxy) {
+		go func(p *tcp2.Proxy) {
 			defer wg.Done()
 			ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
 			if err := p.Shutdown(ctx); err != nil {

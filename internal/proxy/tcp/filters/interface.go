@@ -1,9 +1,8 @@
-package tcp
+package filters
 
 import (
 	"fmt"
 	"goxy/internal/common"
-	"goxy/internal/common/tcp"
 	"strings"
 )
 
@@ -71,5 +70,5 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 
 type Filter struct {
 	Rule    Rule
-	Verdict tcp.Verdict
+	Verdict common.Verdict
 }

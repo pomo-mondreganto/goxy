@@ -5,8 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"goxy/internal/common"
-	tcpcommon "goxy/internal/common/tcp"
-	"goxy/internal/filters/tcp"
+	"goxy/internal/proxy/tcp/filters"
 	"io"
 	"net"
 	"sync"
@@ -30,7 +29,7 @@ type Proxy struct {
 	wg       *sync.WaitGroup
 	listener net.Listener
 	logger   *logrus.Entry
-	filters  []*tcp.Filter
+	filters  []*filters.Filter
 }
 
 func (p *Proxy) runFilters(conn *Connection, buf []byte, ingress bool) error {
@@ -207,22 +206,22 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func NewProxy(cfg *common.ServiceConfig, rs *tcp.RuleSet) (*Proxy, error) {
-	filters := make([]*tcp.Filter, 0, len(cfg.Filters))
+func NewProxy(cfg *common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
+	fts := make([]*filters.Filter, 0, len(cfg.Filters))
 	for _, f := range cfg.Filters {
 		rule, ok := rs.GetRule(f.Rule)
 		if !ok {
 			return nil, fmt.Errorf("invalid rule name: %s", f.Rule)
 		}
-		verdict, err := tcpcommon.ParseVerdict(f.Verdict)
+		verdict, err := common.ParseVerdict(f.Verdict)
 		if err != nil {
 			return nil, fmt.Errorf("parse verdict: %w", err)
 		}
-		filter := &tcp.Filter{
+		filter := &filters.Filter{
 			Rule:    rule,
 			Verdict: verdict,
 		}
-		filters = append(filters, filter)
+		fts = append(fts, filter)
 	}
 
 	logger := logrus.WithField("type", "tcp").WithField("listen", cfg.Listen)
@@ -231,7 +230,7 @@ func NewProxy(cfg *common.ServiceConfig, rs *tcp.RuleSet) (*Proxy, error) {
 		TargetAddr: cfg.Target,
 
 		logger:  logger,
-		filters: filters,
+		filters: fts,
 	}
 	return p, nil
 }
