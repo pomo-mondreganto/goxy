@@ -1,6 +1,7 @@
 package tcp
 
 import (
+	"github.com/sirupsen/logrus"
 	"goxy/internal/common"
 	"net"
 )
@@ -9,6 +10,7 @@ type Connection struct {
 	Remote  net.Conn
 	Local   net.Conn
 	Context *common.ConnectionContext
+	Logger  *logrus.Entry
 }
 
 func (c *Connection) Close() error {
@@ -21,10 +23,11 @@ func (c *Connection) Close() error {
 	return nil
 }
 
-func NewConnection(r net.Conn, l net.Conn) *Connection {
+func NewConnection(remote net.Conn, local net.Conn) *Connection {
 	return &Connection{
-		Remote:  r,
-		Local:   l,
+		Remote:  remote,
+		Local:   local,
 		Context: common.NewContext(),
+		Logger:  logrus.WithField("src", remote.RemoteAddr()),
 	}
 }

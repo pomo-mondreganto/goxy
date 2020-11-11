@@ -100,6 +100,8 @@ func (p *Proxy) handleConnection(conn *Connection, ingress bool) error {
 			break
 		}
 	}
+
+	logger.Debug("Done handling connection")
 	return nil
 }
 
@@ -107,7 +109,7 @@ func (p *Proxy) HandleConn(conn net.Conn) {
 	defer p.wg.Done()
 	defer func() {
 		if err := conn.Close(); err != nil && !isConnectionClosedErr(err) {
-			p.logger.Warningf("Error closing connection: %v", err)
+			p.logger.Warningf("Error closing connection from %v: %v", conn.RemoteAddr(), err)
 		}
 	}()
 
@@ -120,15 +122,15 @@ func (p *Proxy) HandleConn(conn net.Conn) {
 
 	c := NewConnection(conn, localConn)
 
-	wg := sync.WaitGroup{}
-	handler := func(ingress bool, other net.Conn) {
-		logger := p.logger.WithField("ingress", ingress)
+	handler := func(wg *sync.WaitGroup, ingress bool) {
+		logger := c.Logger.WithField("ingress", ingress)
+		defer wg.Done()
 		defer func() {
-			logger.Debug("Closing other end of connection")
-			if err := other.Close(); err != nil {
+			logger.Debug("Closing bidi connection")
+			if err := c.Close(); err != nil {
 				logger.Fatal("Error closing bidi connection: ", err)
 			}
-			wg.Done()
+			logger.Debug("Connection closed")
 		}()
 		if err := p.handleConnection(c, ingress); err != nil {
 			if !isConnectionClosedErr(err) {
@@ -139,14 +141,29 @@ func (p *Proxy) HandleConn(conn net.Conn) {
 		}
 	}
 
+	wg := sync.WaitGroup{}
 	wg.Add(2)
-	go handler(true, c.Local)
-	go handler(false, c.Remote)
+	go handler(&wg, true)
+	go handler(&wg, false)
 	wg.Wait()
 }
 
 func (p *Proxy) Serve() {
 	defer p.wg.Done()
+	conns := make([]net.Conn, 0)
+	defer func() {
+		p.logger.Debugf("Closing %d connections", len(conns))
+		for _, c := range conns {
+			logger := p.logger.WithField("src", c.RemoteAddr())
+			if err := c.Close(); err != nil {
+				if isConnectionClosedErr(err) {
+					logger.Debug("Connection already closed: %v", err)
+				} else {
+					logger.Errorf("Error closing connection: %v", err)
+				}
+			}
+		}
+	}()
 
 	p.logger.Infof("Starting")
 
@@ -161,6 +178,7 @@ func (p *Proxy) Serve() {
 			}
 			return
 		}
+		conns = append(conns, conn)
 		p.wg.Add(1)
 		go p.HandleConn(conn)
 	}
