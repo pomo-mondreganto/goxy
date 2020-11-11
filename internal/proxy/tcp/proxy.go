@@ -15,6 +15,11 @@ import (
 
 const BufSize = 64 * 1024
 
+const (
+	dropFlag   = "drop"
+	acceptFlag = "accept"
+)
+
 var (
 	ErrAlreadyRunning  = errors.New("proxy is already running")
 	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
@@ -34,21 +39,17 @@ type Proxy struct {
 
 func (p *Proxy) runFilters(conn *Connection, buf []byte, ingress bool) error {
 	for _, f := range p.filters {
-		res, err := f.Rule.Apply(buf, ingress)
+		res, err := f.Rule.Apply(conn.Context, buf, ingress)
 		if err != nil {
 			return fmt.Errorf("error in rule %T: %w", f.Rule, err)
 		}
 		if res {
-			conn.mu.Lock()
 			if err := f.Verdict.Mutate(conn.Context); err != nil {
-				conn.mu.Unlock()
 				return fmt.Errorf("error mutating verdict %T: %w", f.Verdict, err)
 			}
-			if conn.Context.MustDrop || conn.Context.MustAccept {
-				conn.mu.Unlock()
+			if conn.Context.GetFlag(dropFlag) || conn.Context.GetFlag(acceptFlag) {
 				break
 			}
-			conn.mu.Unlock()
 		}
 	}
 	return nil
@@ -79,13 +80,10 @@ func (p *Proxy) handleConnection(conn *Connection, ingress bool) error {
 				logger.Errorf("Error running filters: %v", err)
 			}
 
-			conn.mu.Lock()
-			if conn.Context.MustDrop {
+			if conn.Context.GetFlag(dropFlag) {
 				logger.Debugf("Dropping connection")
-				conn.mu.Unlock()
 				return ErrDropped
 			}
-			conn.mu.Unlock()
 
 			nw, ew := dst.Write(data)
 			if ew != nil {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"goxy/internal/common"
 	"regexp"
+	"strconv"
 )
 
 var (
@@ -16,7 +17,7 @@ type RegexRule struct {
 	Regex *regexp.Regexp
 }
 
-func (r *RegexRule) Apply(buf []byte, _ bool) (bool, error) {
+func (r *RegexRule) Apply(_ *common.ConnectionContext, buf []byte, _ bool) (bool, error) {
 	return r.Regex.Match(buf), nil
 }
 
@@ -35,7 +36,7 @@ type ContainsRule struct {
 	Values [][]byte
 }
 
-func (r *ContainsRule) Apply(buf []byte, _ bool) (bool, error) {
+func (r *ContainsRule) Apply(_ *common.ConnectionContext, buf []byte, _ bool) (bool, error) {
 	for _, v := range r.Values {
 		if bytes.Contains(buf, v) {
 			return true, nil
@@ -57,64 +58,30 @@ func NewContainsRule(cfg *common.RuleConfig) (Rule, error) {
 
 type IngressRule struct{}
 
-func (r *IngressRule) Apply(_ []byte, ingress bool) (bool, error) {
+func (r *IngressRule) Apply(_ *common.ConnectionContext, _ []byte, ingress bool) (bool, error) {
 	return ingress, nil
 }
 
-type CompositeAndRule struct {
-	Rules []Rule
+type CounterGTRule struct {
+	Key   string
+	Value int
 }
 
-func (r *CompositeAndRule) Apply(buf []byte, ingress bool) (bool, error) {
-	for _, rule := range r.Rules {
-		res, err := rule.Apply(buf, ingress)
-		if err != nil {
-			return false, fmt.Errorf("error in rule %T: %w", rule, err)
-		}
-		if !res {
-			return false, nil
-		}
-	}
-	return true, nil
+func (r *CounterGTRule) Apply(ctx *common.ConnectionContext, _ []byte, _ bool) (bool, error) {
+	return ctx.GetCounter(r.Key) > r.Value, nil
 }
 
-func NewCompositeAndRule(rules map[string]Rule, cfg *common.RuleConfig) (Rule, error) {
-	if len(cfg.Args) < 2 {
+func NewCounterGTRule(cfg *common.RuleConfig) (Rule, error) {
+	if len(cfg.Args) != 2 {
 		return nil, ErrInvalidRuleArgs
 	}
-	r := &CompositeAndRule{Rules: make([]Rule, 0, len(cfg.Args))}
-	for _, name := range cfg.Args {
-		rule, ok := rules[name]
-		if !ok {
-			return nil, fmt.Errorf("invalid rule name: %s", name)
-		}
-		r.Rules = append(r.Rules, rule)
+	val, err := strconv.Atoi(cfg.Args[1])
+	if err != nil {
+		return nil, fmt.Errorf("parsing value: %w", err)
+	}
+	r := &CounterGTRule{
+		Key:   cfg.Args[0],
+		Value: val,
 	}
 	return r, nil
-}
-
-type CompositeNotRule struct {
-	Rule Rule
-}
-
-func (r *CompositeNotRule) Apply(buf []byte, ingress bool) (bool, error) {
-	res, err := r.Rule.Apply(buf, ingress)
-	if err != nil {
-		return false, fmt.Errorf("error in rule %T: %w", r.Rule, err)
-	}
-	return !res, nil
-}
-
-func NewCompositeNotRule(rules map[string]Rule, cfg *common.RuleConfig) (Rule, error) {
-	if len(cfg.Args) != 1 {
-		return nil, ErrInvalidRuleArgs
-	}
-
-	name := cfg.Args[0]
-	rule, ok := rules[name]
-	if !ok {
-		return nil, fmt.Errorf("invalid rule name: %s", name)
-	}
-
-	return &CompositeNotRule{Rule: rule}, nil
 }

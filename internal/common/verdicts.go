@@ -15,9 +15,15 @@ func ParseVerdict(desc string) (Verdict, error) {
 	tokens := strings.Split(desc, "::")
 	switch strings.ToLower(tokens[0]) {
 	case "drop":
-		return &VerdictDrop{}, nil
+		v := &VerdictSetFlag{
+			Key: "drop",
+		}
+		return v, nil
 	case "accept":
-		return &VerdictAccept{}, nil
+		v := &VerdictSetFlag{
+			Key: "accept",
+		}
+		return v, nil
 	case "inc":
 		if len(tokens) < 2 {
 			return nil, errors.New("counter missing for inc verdict")
@@ -41,17 +47,12 @@ func ParseVerdict(desc string) (Verdict, error) {
 	}
 }
 
-type VerdictDrop struct{}
-
-func (v *VerdictDrop) Mutate(ctx *ConnectionContext) error {
-	ctx.MustDrop = true
-	return nil
+type VerdictSetFlag struct {
+	Key string
 }
 
-type VerdictAccept struct{}
-
-func (v *VerdictAccept) Mutate(ctx *ConnectionContext) error {
-	ctx.MustAccept = true
+func (v *VerdictSetFlag) Mutate(ctx *ConnectionContext) error {
+	ctx.SetFlag(v.Key)
 	return nil
 }
 
@@ -60,7 +61,7 @@ type VerdictIncrement struct {
 }
 
 func (v *VerdictIncrement) Mutate(ctx *ConnectionContext) error {
-	ctx.Counters[v.Key] += 1
+	ctx.AddToCounter(v.Key, 1)
 	return nil
 }
 
@@ -69,7 +70,7 @@ type VerdictDecrement struct {
 }
 
 func (v *VerdictDecrement) Mutate(ctx *ConnectionContext) error {
-	ctx.Counters[v.Key] -= 1
+	ctx.AddToCounter(v.Key, -1)
 	return nil
 }
 

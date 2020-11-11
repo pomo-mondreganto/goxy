@@ -3,15 +3,12 @@ package tcp
 import (
 	"goxy/internal/common"
 	"net"
-	"sync"
 )
 
 type Connection struct {
 	Remote  net.Conn
 	Local   net.Conn
 	Context *common.ConnectionContext
-
-	mu sync.Mutex
 }
 
 func (c *Connection) Close() error {

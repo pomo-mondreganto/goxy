@@ -6,8 +6,9 @@ var DefaultRules = map[string]Rule{
 }
 
 var DefaultRuleCreators = map[string]RuleCreator{
-	"regex":    NewRegexRule,
-	"contains": NewContainsRule,
+	"regex":      NewRegexRule,
+	"contains":   NewContainsRule,
+	"counter_gt": NewCounterGTRule,
 }
 
 var DefaultCompositeRuleCreators = map[string]CompositeRuleCreator{
