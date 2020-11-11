@@ -7,6 +7,11 @@ rules:
     type: tcp::contains
     args:
       - "attack"
+  - name: ingress_attack
+    type: tcp::and
+    args:
+      - ingress
+      - contains_attack
 
 services:
   - name: test tcp
@@ -18,5 +23,5 @@ services:
         verdict: inc::keks
       - rule: egress
         verdict: "alert::show keks"
-      - rule: contains_attack
+      - rule: ingress_attack
         verdict: drop

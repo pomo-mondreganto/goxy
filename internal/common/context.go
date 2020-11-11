@@ -48,5 +48,6 @@ func (c *ConnectionContext) GetFlag(flag string) bool {
 func NewContext() *ConnectionContext {
 	return &ConnectionContext{
 		counters: make(map[string]int),
+		flags:    make(map[string]bool),
 	}
 }

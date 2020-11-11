@@ -22,13 +22,13 @@ func (r *CompositeAndRule) Apply(ctx *common.ConnectionContext, buf []byte, ingr
 	return true, nil
 }
 
-func NewCompositeAndRule(rules map[string]Rule, cfg *common.RuleConfig) (Rule, error) {
+func NewCompositeAndRule(rs *RuleSet, cfg *common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) < 2 {
 		return nil, ErrInvalidRuleArgs
 	}
 	r := &CompositeAndRule{Rules: make([]Rule, 0, len(cfg.Args))}
 	for _, name := range cfg.Args {
-		rule, ok := rules[name]
+		rule, ok := rs.GetRule(name)
 		if !ok {
 			return nil, fmt.Errorf("invalid rule name: %s", name)
 		}
@@ -49,13 +49,13 @@ func (r *CompositeNotRule) Apply(ctx *common.ConnectionContext, buf []byte, ingr
 	return !res, nil
 }
 
-func NewCompositeNotRule(rules map[string]Rule, cfg *common.RuleConfig) (Rule, error) {
+func NewCompositeNotRule(rs *RuleSet, cfg *common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
 
 	name := cfg.Args[0]
-	rule, ok := rules[name]
+	rule, ok := rs.GetRule(name)
 	if !ok {
 		return nil, fmt.Errorf("invalid rule name: %s", name)
 	}

@@ -11,7 +11,7 @@ type Rule interface {
 }
 
 type RuleCreator func(cfg *common.RuleConfig) (Rule, error)
-type CompositeRuleCreator func(rules map[string]Rule, cfg *common.RuleConfig) (Rule, error)
+type CompositeRuleCreator func(rs *RuleSet, cfg *common.RuleConfig) (Rule, error)
 
 type RuleSet struct {
 	Rules map[string]Rule
@@ -53,9 +53,9 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 			}
 
 			if creator, ok := DefaultCompositeRuleCreators[name]; ok {
-				rule, err := creator(rs.Rules, &rc)
+				rule, err := creator(rs, &rc)
 				if err != nil {
-					return nil, fmt.Errorf("error creating rule %s: %w", name, err)
+					return nil, fmt.Errorf("error creating composite rule %s: %w", name, err)
 				}
 				rs.Rules[rc.Name] = rule
 				continue

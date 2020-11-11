@@ -157,7 +157,7 @@ func (p *Proxy) Serve() {
 			logger := p.logger.WithField("src", c.RemoteAddr())
 			if err := c.Close(); err != nil {
 				if isConnectionClosedErr(err) {
-					logger.Debug("Connection already closed: %v", err)
+					logger.Debugf("Connection already closed: %v", err)
 				} else {
 					logger.Errorf("Error closing connection: %v", err)
 				}
