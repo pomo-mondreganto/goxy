@@ -12,6 +12,10 @@ rules:
     args:
       - ingress
       - contains_attack
+  - name: ingress_attack_short
+    type: tcp::ingress_contains
+    args:
+      - attack
 
 services:
   - name: test tcp
@@ -24,4 +28,8 @@ services:
       - rule: egress
         verdict: "alert::show keks"
       - rule: ingress_attack
-        verdict: drop
+        verdict: inc::attacks
+      - rule: ingress_attack_short
+        verdict: inc::attacks
+      - rule: egress
+        verdict: "alert::show attacks"

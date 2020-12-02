@@ -27,7 +27,7 @@ func (rs *RuleSet) GetRule(name string) (Rule, bool) {
 	return nil, false
 }
 
-func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
+func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
 	rs := &RuleSet{Rules: make(map[string]Rule)}
 
 	for _, rc := range cfg {
@@ -44,7 +44,7 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 			}
 
 			if creator, ok := DefaultRuleCreators[name]; ok {
-				rule, err := creator(&rc)
+				rule, err := creator(rc)
 				if err != nil {
 					return nil, fmt.Errorf("error creating rule %s: %w", name, err)
 				}
@@ -53,7 +53,7 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 			}
 
 			if creator, ok := DefaultCompositeRuleCreators[name]; ok {
-				rule, err := creator(rs, &rc)
+				rule, err := creator(rs, rc)
 				if err != nil {
 					return nil, fmt.Errorf("error creating composite rule %s: %w", name, err)
 				}

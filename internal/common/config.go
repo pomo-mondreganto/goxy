@@ -20,6 +20,6 @@ type ServiceConfig struct {
 }
 
 type ProxyConfig struct {
-	Rules    []RuleConfig
+	Rules    []*RuleConfig
 	Services []ServiceConfig
 }
