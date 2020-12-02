@@ -32,7 +32,7 @@ func setLogLevel() {
 	case "ERROR":
 		logrus.SetLevel(logrus.ErrorLevel)
 	default:
-		logrus.Errorf("Invalid log level provided: %s")
+		logrus.Errorf("Invalid log level provided: %s", *logLevel)
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
