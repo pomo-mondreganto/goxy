@@ -9,7 +9,7 @@ type CompositeAndRule struct {
 	Rules []Rule
 }
 
-func (r *CompositeAndRule) Apply(ctx *common.ConnectionContext, buf []byte, ingress bool) (bool, error) {
+func (r *CompositeAndRule) Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error) {
 	for _, rule := range r.Rules {
 		res, err := rule.Apply(ctx, buf, ingress)
 		if err != nil {
@@ -41,7 +41,7 @@ type CompositeNotRule struct {
 	Rule Rule
 }
 
-func (r *CompositeNotRule) Apply(ctx *common.ConnectionContext, buf []byte, ingress bool) (bool, error) {
+func (r *CompositeNotRule) Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error) {
 	res, err := r.Rule.Apply(ctx, buf, ingress)
 	if err != nil {
 		return false, fmt.Errorf("error in rule %T: %w", r.Rule, err)

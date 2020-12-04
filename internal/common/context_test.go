@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestConnectionContext_AddToCounter(t *testing.T) {
+func TestProxyContext_AddToCounter(t *testing.T) {
 	tests := []struct {
 		name  string
 		key   string
@@ -35,7 +35,7 @@ func TestConnectionContext_AddToCounter(t *testing.T) {
 	}
 }
 
-func TestConnectionContext_DumpFields(t *testing.T) {
+func TestProxyContext_DumpFields(t *testing.T) {
 	type fields struct {
 		flags    map[string]bool
 		counters map[string]int
@@ -59,7 +59,7 @@ func TestConnectionContext_DumpFields(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &ConnectionContext{
+			c := &ProxyContext{
 				flags:    tt.fields.flags,
 				counters: tt.fields.counters,
 				mu:       sync.RWMutex{},
@@ -80,7 +80,7 @@ func TestConnectionContext_DumpFields(t *testing.T) {
 	}
 }
 
-func TestConnectionContext_GetCounter(t *testing.T) {
+func TestProxyContext_GetCounter(t *testing.T) {
 	type fields struct {
 		flags    map[string]bool
 		counters map[string]int
@@ -115,7 +115,7 @@ func TestConnectionContext_GetCounter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &ConnectionContext{
+			c := &ProxyContext{
 				flags:    tt.fields.flags,
 				counters: tt.fields.counters,
 				mu:       sync.RWMutex{},
@@ -127,7 +127,7 @@ func TestConnectionContext_GetCounter(t *testing.T) {
 	}
 }
 
-func TestConnectionContext_GetFlag(t *testing.T) {
+func TestProxyContext_GetFlag(t *testing.T) {
 	type fields struct {
 		flags    map[string]bool
 		counters map[string]int
@@ -171,7 +171,7 @@ func TestConnectionContext_GetFlag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &ConnectionContext{
+			c := &ProxyContext{
 				flags:    tt.fields.flags,
 				counters: tt.fields.counters,
 				mu:       sync.RWMutex{},
@@ -183,7 +183,7 @@ func TestConnectionContext_GetFlag(t *testing.T) {
 	}
 }
 
-func TestConnectionContext_SetFlag(t *testing.T) {
+func TestProxyContext_SetFlag(t *testing.T) {
 	tests := []struct {
 		name string
 		key  string

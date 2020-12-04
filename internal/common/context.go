@@ -5,13 +5,13 @@ import (
 	"sync"
 )
 
-type ConnectionContext struct {
+type ProxyContext struct {
 	flags    map[string]bool
 	counters map[string]int
 	mu       sync.RWMutex
 }
 
-func (c *ConnectionContext) DumpFields() logrus.Fields {
+func (c *ProxyContext) DumpFields() logrus.Fields {
 	fields := make(logrus.Fields)
 	for k, v := range c.counters {
 		fields[k] = v
@@ -24,34 +24,34 @@ func (c *ConnectionContext) DumpFields() logrus.Fields {
 	return fields
 }
 
-func (c *ConnectionContext) AddToCounter(key string, value int) {
+func (c *ProxyContext) AddToCounter(key string, value int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.counters[key] += value
 }
 
-func (c *ConnectionContext) GetCounter(key string) int {
+func (c *ProxyContext) GetCounter(key string) int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	val := c.counters[key]
 	return val
 }
 
-func (c *ConnectionContext) SetFlag(flag string) {
+func (c *ProxyContext) SetFlag(flag string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.flags[flag] = true
 }
 
-func (c *ConnectionContext) GetFlag(flag string) bool {
+func (c *ProxyContext) GetFlag(flag string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	val := c.flags[flag]
 	return val
 }
 
-func NewContext() *ConnectionContext {
-	return &ConnectionContext{
+func NewContext() *ProxyContext {
+	return &ProxyContext{
 		counters: make(map[string]int),
 		flags:    make(map[string]bool),
 	}

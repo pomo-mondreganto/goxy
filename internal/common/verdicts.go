@@ -8,7 +8,7 @@ import (
 )
 
 type Verdict interface {
-	Mutate(ctx *ConnectionContext) error
+	Mutate(ctx *ProxyContext) error
 }
 
 func ParseVerdict(desc string) (Verdict, error) {
@@ -51,7 +51,7 @@ type VerdictSetFlag struct {
 	Key string
 }
 
-func (v *VerdictSetFlag) Mutate(ctx *ConnectionContext) error {
+func (v *VerdictSetFlag) Mutate(ctx *ProxyContext) error {
 	ctx.SetFlag(v.Key)
 	return nil
 }
@@ -60,7 +60,7 @@ type VerdictIncrement struct {
 	Key string
 }
 
-func (v *VerdictIncrement) Mutate(ctx *ConnectionContext) error {
+func (v *VerdictIncrement) Mutate(ctx *ProxyContext) error {
 	ctx.AddToCounter(v.Key, 1)
 	return nil
 }
@@ -69,7 +69,7 @@ type VerdictDecrement struct {
 	Key string
 }
 
-func (v *VerdictDecrement) Mutate(ctx *ConnectionContext) error {
+func (v *VerdictDecrement) Mutate(ctx *ProxyContext) error {
 	ctx.AddToCounter(v.Key, -1)
 	return nil
 }
@@ -78,7 +78,7 @@ type VerdictAlert struct {
 	Logger *logrus.Entry
 }
 
-func (v *VerdictAlert) Mutate(ctx *ConnectionContext) error {
+func (v *VerdictAlert) Mutate(ctx *ProxyContext) error {
 	v.Logger.WithFields(ctx.DumpFields()).Warningf("Alert triggered")
 	return nil
 }

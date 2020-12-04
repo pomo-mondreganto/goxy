@@ -80,7 +80,7 @@ func TestVerdictAlert_Mutate(t *testing.T) {
 		Logger *logrus.Entry
 	}
 	type args struct {
-		ctx *ConnectionContext
+		ctx *ProxyContext
 	}
 	tests := []struct {
 		name    string
@@ -112,7 +112,7 @@ func TestVerdictDecrement_Mutate(t *testing.T) {
 		Key string
 	}
 	type args struct {
-		ctx *ConnectionContext
+		ctx *ProxyContext
 	}
 	tests := []struct {
 		name    string
@@ -148,7 +148,7 @@ func TestVerdictIncrement_Mutate(t *testing.T) {
 		Key string
 	}
 	type args struct {
-		ctx *ConnectionContext
+		ctx *ProxyContext
 	}
 	tests := []struct {
 		name    string
@@ -184,7 +184,7 @@ func TestVerdictSetFlag_Mutate(t *testing.T) {
 		Key string
 	}
 	type args struct {
-		ctx *ConnectionContext
+		ctx *ProxyContext
 	}
 	tests := []struct {
 		name    string

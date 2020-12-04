@@ -17,7 +17,7 @@ type RegexRule struct {
 	Regex *regexp.Regexp
 }
 
-func (r *RegexRule) Apply(_ *common.ConnectionContext, buf []byte, _ bool) (bool, error) {
+func (r *RegexRule) Apply(_ *common.ProxyContext, buf []byte, _ bool) (bool, error) {
 	return r.Regex.Match(buf), nil
 }
 
@@ -36,7 +36,7 @@ type ContainsRule struct {
 	Values [][]byte
 }
 
-func (r *ContainsRule) Apply(_ *common.ConnectionContext, buf []byte, _ bool) (bool, error) {
+func (r *ContainsRule) Apply(_ *common.ProxyContext, buf []byte, _ bool) (bool, error) {
 	for _, v := range r.Values {
 		if bytes.Contains(buf, v) {
 			return true, nil
@@ -58,7 +58,7 @@ func NewContainsRule(cfg *common.RuleConfig) (Rule, error) {
 
 type IngressRule struct{}
 
-func (r *IngressRule) Apply(_ *common.ConnectionContext, _ []byte, ingress bool) (bool, error) {
+func (r *IngressRule) Apply(_ *common.ProxyContext, _ []byte, ingress bool) (bool, error) {
 	return ingress, nil
 }
 
@@ -67,7 +67,7 @@ type CounterGTRule struct {
 	Value int
 }
 
-func (r *CounterGTRule) Apply(ctx *common.ConnectionContext, _ []byte, _ bool) (bool, error) {
+func (r *CounterGTRule) Apply(ctx *common.ProxyContext, _ []byte, _ bool) (bool, error) {
 	return ctx.GetCounter(r.Key) > r.Value, nil
 }
 

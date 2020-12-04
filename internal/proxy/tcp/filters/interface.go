@@ -7,7 +7,7 @@ import (
 )
 
 type Rule interface {
-	Apply(ctx *common.ConnectionContext, buf []byte, ingress bool) (bool, error)
+	Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error)
 }
 
 type RuleCreator func(cfg *common.RuleConfig) (Rule, error)

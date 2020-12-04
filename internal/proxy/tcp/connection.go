@@ -9,7 +9,7 @@ import (
 type Connection struct {
 	Remote  net.Conn
 	Local   net.Conn
-	Context *common.ConnectionContext
+	Context *common.ProxyContext
 	Logger  *logrus.Entry
 }
 

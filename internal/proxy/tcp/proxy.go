@@ -37,17 +37,17 @@ type Proxy struct {
 	filters  []*filters.Filter
 }
 
-func (p *Proxy) runFilters(conn *Connection, buf []byte, ingress bool) error {
+func (p *Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) error {
 	for _, f := range p.filters {
-		res, err := f.Rule.Apply(conn.Context, buf, ingress)
+		res, err := f.Rule.Apply(pctx, buf, ingress)
 		if err != nil {
 			return fmt.Errorf("error in rule %T: %w", f.Rule, err)
 		}
 		if res {
-			if err := f.Verdict.Mutate(conn.Context); err != nil {
+			if err := f.Verdict.Mutate(pctx); err != nil {
 				return fmt.Errorf("error mutating verdict %T: %w", f.Verdict, err)
 			}
-			if conn.Context.GetFlag(dropFlag) || conn.Context.GetFlag(acceptFlag) {
+			if pctx.GetFlag(dropFlag) || pctx.GetFlag(acceptFlag) {
 				break
 			}
 		}
@@ -76,7 +76,7 @@ func (p *Proxy) handleConnection(conn *Connection, ingress bool) error {
 
 			data := buf[:nr]
 
-			if err := p.runFilters(conn, data, ingress); err != nil {
+			if err := p.runFilters(conn.Context, data, ingress); err != nil {
 				logger.Errorf("Error running filters: %v", err)
 			}
 
