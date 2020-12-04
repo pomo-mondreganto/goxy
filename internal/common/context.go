@@ -16,6 +16,11 @@ func (c *ConnectionContext) DumpFields() logrus.Fields {
 	for k, v := range c.counters {
 		fields[k] = v
 	}
+	for k, v := range c.flags {
+		if v {
+			fields[k] = v
+		}
+	}
 	return fields
 }
 
