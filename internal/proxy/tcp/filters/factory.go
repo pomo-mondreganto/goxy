@@ -28,3 +28,17 @@ func IngressRuleFactory(creator RuleCreator) RuleCreator {
 		return rule, nil
 	}
 }
+
+func EgressRuleFactory(creator RuleCreator) RuleCreator {
+	return func(cfg *common.RuleConfig) (Rule, error) {
+		inner, err := creator(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("creating inner rule: %w", err)
+		}
+		rule := &CompositeAndRule{Rules: []Rule{
+			&CompositeNotRule{new(IngressRule)},
+			inner,
+		}}
+		return rule, nil
+	}
+}

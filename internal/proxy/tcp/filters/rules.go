@@ -62,6 +62,10 @@ func (r *IngressRule) Apply(_ *common.ProxyContext, _ []byte, ingress bool) (boo
 	return ingress, nil
 }
 
+func NewIngressRule(_ *common.RuleConfig) (Rule, error) {
+	return new(IngressRule), nil
+}
+
 type CounterGTRule struct {
 	Key   string
 	Value int

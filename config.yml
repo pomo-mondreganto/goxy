@@ -3,19 +3,21 @@ rules:
     type: tcp::regex
     args:
       - "ke?k"
+
   - name: contains_attack
     type: tcp::contains
     args:
       - "attack"
+
   - name: ingress_attack
-    type: tcp::and
+    type: tcp::ingress::contains
     args:
-      - ingress
-      - contains_attack
-  - name: ingress_attack_short
-    type: tcp::ingress_contains
+      - "attack"
+
+  - name: ingress_not_contains_legit
+    type: tcp::ingress::not::contains
     args:
-      - attack
+      - "legit"
 
 services:
   - name: test tcp

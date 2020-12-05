@@ -2,19 +2,20 @@ package filters
 
 var DefaultRules = map[string]Rule{
 	"ingress": new(IngressRule),
-	"egress":  &CompositeNotRule{Rule: new(IngressRule)},
+	"egress":  &CompositeNotRule{new(IngressRule)},
+}
+
+var DefaultRuleFactories = map[string]RuleFactory{
+	"ingress": IngressRuleFactory,
+	"egress":  EgressRuleFactory,
+	"not":     NotRuleFactory,
 }
 
 var DefaultRuleCreators = map[string]RuleCreator{
+	"ingress":    NewIngressRule,
 	"regex":      NewRegexRule,
 	"contains":   NewContainsRule,
 	"counter_gt": NewCounterGTRule,
-
-	"not_contains": NotRuleFactory(NewContainsRule),
-	"not_regex":    NotRuleFactory(NewRegexRule),
-
-	"ingress_contains": IngressRuleFactory(NewContainsRule),
-	"ingress_regex":    IngressRuleFactory(NewRegexRule),
 }
 
 var DefaultCompositeRuleCreators = map[string]CompositeRuleCreator{

@@ -12,6 +12,7 @@ type Rule interface {
 
 type RuleCreator func(cfg *common.RuleConfig) (Rule, error)
 type CompositeRuleCreator func(rs *RuleSet, cfg *common.RuleConfig) (Rule, error)
+type RuleFactory func(creator RuleCreator) RuleCreator
 
 type RuleSet struct {
 	Rules map[string]Rule
@@ -31,37 +32,39 @@ func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
 	rs := &RuleSet{Rules: make(map[string]Rule)}
 
 	for _, rc := range cfg {
-		if strings.HasPrefix(rc.Type, "tcp") {
-			tokens := strings.Split(rc.Type, "::")
-			if len(tokens) < 2 {
-				return nil, fmt.Errorf("invalid rule type: %s", rc.Type)
-			}
+		tokens := strings.Split(rc.Type, "::")
+		if len(tokens) < 2 {
+			return nil, fmt.Errorf("invalid rule: %s", rc.Type)
+		}
+		if tokens[0] == "tcp" {
+			// Create base rule creator first
+			baseName := tokens[len(tokens)-1]
 
-			name := tokens[1]
-			if rule, ok := DefaultRules[name]; ok {
-				rs.Rules[rc.Name] = rule
-				continue
-			}
-
-			if creator, ok := DefaultRuleCreators[name]; ok {
-				rule, err := creator(rc)
-				if err != nil {
-					return nil, fmt.Errorf("error creating rule %s: %w", name, err)
+			creator, ok := DefaultRuleCreators[baseName]
+			if !ok {
+				var compositeCreator CompositeRuleCreator
+				if compositeCreator, ok = DefaultCompositeRuleCreators[baseName]; ok {
+					creator = compositeCreator.PartialConvert(rs)
 				}
-				rs.Rules[rc.Name] = rule
-				continue
+			}
+			if !ok {
+				return nil, fmt.Errorf("unknown rule type: %s", rc.Type)
 			}
 
-			if creator, ok := DefaultCompositeRuleCreators[name]; ok {
-				rule, err := creator(rs, rc)
-				if err != nil {
-					return nil, fmt.Errorf("error creating composite rule %s: %w", name, err)
+			for i := len(tokens) - 2; i > 0; i -= 1 {
+				factoryName := tokens[i]
+				factory, ok := DefaultRuleFactories[factoryName]
+				if !ok {
+					return nil, fmt.Errorf("invalid factory name: %s", factoryName)
 				}
-				rs.Rules[rc.Name] = rule
-				continue
+				creator = factory(creator)
 			}
 
-			return nil, fmt.Errorf("unknown rule type: %s", rc.Type)
+			rule, err := creator(rc)
+			if err != nil {
+				return nil, fmt.Errorf("creating rule %s: %w", rc.Type, err)
+			}
+			rs.Rules[rc.Name] = rule
 		}
 	}
 

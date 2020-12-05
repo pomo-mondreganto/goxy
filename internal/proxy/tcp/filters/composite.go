@@ -62,3 +62,9 @@ func NewCompositeNotRule(rs *RuleSet, cfg *common.RuleConfig) (Rule, error) {
 
 	return &CompositeNotRule{Rule: rule}, nil
 }
+
+func (c CompositeRuleCreator) PartialConvert(rs *RuleSet) RuleCreator {
+	return func(cfg *common.RuleConfig) (Rule, error) {
+		return c(rs, cfg)
+	}
+}
