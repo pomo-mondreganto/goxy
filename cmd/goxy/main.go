@@ -6,14 +6,17 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"goxy/internal/common"
+	"goxy/internal/proxy/http"
 	"goxy/internal/proxy/tcp"
-	"goxy/internal/proxy/tcp/filters"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	httpfilters "goxy/internal/proxy/http/filters"
+	tcpfilters "goxy/internal/proxy/tcp/filters"
 )
 
 var (
@@ -57,9 +60,14 @@ func main() {
 		logrus.Fatal("Error parsing proxy config from file: ", err)
 	}
 
-	tcpRuleSet, err := filters.NewRuleSet(pc.Rules)
+	tcpRuleSet, err := tcpfilters.NewRuleSet(pc.Rules)
 	if err != nil {
-		logrus.Fatal("Error creating tcp ruleset: ", err)
+		logrus.Fatalf("Error creating tcp ruleset: %v", err)
+	}
+
+	httpRuleSet, err := httpfilters.NewRuleSet(pc.Rules)
+	if err != nil {
+		logrus.Fatalf("Error creating http ruleset: %v", err)
 	}
 
 	tcpProxies := make([]*tcp.Proxy, 0)
@@ -67,9 +75,20 @@ func main() {
 		if s.Type == "tcp" {
 			p, err := tcp.NewProxy(&s, tcpRuleSet)
 			if err != nil {
-				logrus.Fatal("Error creating tcp proxy: ", err)
+				logrus.Fatalf("Error creating tcp proxy: %v", err)
 			}
 			tcpProxies = append(tcpProxies, p)
+		}
+	}
+
+	httpProxies := make([]*http.Proxy, 0)
+	for _, s := range pc.Services {
+		if s.Type == "http" {
+			p, err := http.NewProxy(&s, httpRuleSet)
+			if err != nil {
+				logrus.Fatalf("Error creating http proxy: %v", err)
+			}
+			httpProxies = append(httpProxies, p)
 		}
 	}
 
@@ -80,6 +99,16 @@ func main() {
 			defer wg.Done()
 			if err := p.Start(); err != nil {
 				logrus.Fatalf("Error starting tcp proxy: %v", err)
+			}
+		}(p)
+	}
+
+	for _, p := range httpProxies {
+		wg.Add(1)
+		go func(p *http.Proxy) {
+			defer wg.Done()
+			if err := p.Start(); err != nil {
+				logrus.Fatalf("Error starting http proxy: %v", err)
 			}
 		}(p)
 	}
@@ -99,6 +128,19 @@ func main() {
 			}
 		}(p)
 	}
+
+	logrus.Info("Shutting down http proxies")
+	for _, p := range httpProxies {
+		wg.Add(1)
+		go func(p *http.Proxy) {
+			defer wg.Done()
+			ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
+			if err := p.Shutdown(ctx); err != nil {
+				logrus.Fatalf("Error shutting down http proxy: %v", err)
+			}
+		}(p)
+	}
+
 	wg.Wait()
 	logrus.Info("Shutdown successful")
 }
