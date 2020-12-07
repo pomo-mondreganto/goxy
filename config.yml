@@ -19,6 +19,12 @@ rules:
     args:
       - "legit"
 
+  - name: http_ingress_json_kek_not_contains_legit
+    type: http::ingress::not::json::contains
+    field: kek
+    args:
+      - "legit"
+
 services:
   - name: test tcp
     type: tcp
@@ -41,3 +47,5 @@ services:
     filters:
       - rule: ingress
         verdict: "alert::ingress!"
+      - rule: http_ingress_json_kek_not_contains_legit
+        verdict: drop

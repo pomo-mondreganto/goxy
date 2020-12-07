@@ -27,7 +27,7 @@ func NewConnection(remote net.Conn, local net.Conn) *Connection {
 	return &Connection{
 		Remote:  remote,
 		Local:   local,
-		Context: common.NewContext(),
+		Context: common.NewProxyContext(),
 		Logger:  logrus.WithField("src", remote.RemoteAddr()),
 	}
 }

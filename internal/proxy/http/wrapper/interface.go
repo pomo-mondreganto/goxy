@@ -11,4 +11,5 @@ type Entity interface {
 	GetCookies() []*http.Cookie
 	GetURL() *url.URL
 	GetIngress() bool
+	GetJSON() interface{}
 }

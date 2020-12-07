@@ -1,9 +1,10 @@
 package common
 
 type RuleConfig struct {
-	Name string
-	Type string
-	Args []string
+	Name  string
+	Type  string
+	Field string
+	Args  []string
 }
 
 type FilterConfig struct {
@@ -16,10 +17,10 @@ type ServiceConfig struct {
 	Type    string
 	Listen  string
 	Target  string
-	Filters []FilterConfig
+	Filters []*FilterConfig
 }
 
 type ProxyConfig struct {
 	Rules    []*RuleConfig
-	Services []ServiceConfig
+	Services []*ServiceConfig
 }

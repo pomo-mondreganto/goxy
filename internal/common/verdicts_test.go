@@ -91,7 +91,7 @@ func TestVerdictAlert_Mutate(t *testing.T) {
 		{
 			"test no error",
 			fields{Logger: logrus.StandardLogger().WithFields(nil)},
-			args{ctx: NewContext()},
+			args{ctx: NewProxyContext()},
 			false,
 		},
 	}
@@ -123,7 +123,7 @@ func TestVerdictDecrement_Mutate(t *testing.T) {
 		{
 			"simple increment",
 			fields{"counter"},
-			args{NewContext()},
+			args{NewProxyContext()},
 			false,
 		},
 	}
@@ -159,7 +159,7 @@ func TestVerdictIncrement_Mutate(t *testing.T) {
 		{
 			"simple increment",
 			fields{"counter"},
-			args{NewContext()},
+			args{NewProxyContext()},
 			false,
 		},
 	}
@@ -195,7 +195,7 @@ func TestVerdictSetFlag_Mutate(t *testing.T) {
 		{
 			"simple increment",
 			fields{"counter"},
-			args{NewContext()},
+			args{NewProxyContext()},
 			false,
 		},
 	}

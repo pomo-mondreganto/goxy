@@ -32,11 +32,11 @@ func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
 	rs := &RuleSet{Rules: make(map[string]Rule)}
 
 	for _, rc := range cfg {
-		tokens := strings.Split(rc.Type, "::")
-		if len(tokens) < 2 {
-			return nil, fmt.Errorf("invalid rule: %s", rc.Type)
-		}
-		if tokens[0] == "tcp" {
+		if strings.HasPrefix(rc.Type, "tcp::") {
+			tokens := strings.Split(rc.Type, "::")
+			if len(tokens) < 2 {
+				return nil, fmt.Errorf("invalid rule: %s", rc.Type)
+			}
 			// Create base rule creator first
 			baseName := tokens[len(tokens)-1]
 

@@ -1,6 +1,8 @@
 package wrapper
 
 import (
+	"encoding/json"
+	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"net/url"
@@ -8,6 +10,16 @@ import (
 
 type Response struct {
 	Response *http.Response
+}
+
+func (r *Response) GetJSON() interface{} {
+	dec := json.NewDecoder(r.GetBody())
+	result := new(interface{})
+	if err := dec.Decode(result); err != nil {
+		logrus.Warningf("Error decoding JSON in response: %v", err)
+		return nil
+	}
+	return result
 }
 
 func (r *Response) GetIngress() bool {

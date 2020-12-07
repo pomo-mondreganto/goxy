@@ -67,7 +67,7 @@ func TestContainsRule_Apply(t *testing.T) {
 			r := &ContainsRule{
 				Values: tt.fields.Values,
 			}
-			got, err := r.Apply(common.NewContext(), tt.data, false)
+			got, err := r.Apply(common.NewProxyContext(), tt.data, false)
 			if err != nil {
 				t.Errorf("Apply() error = %v", err)
 				return
@@ -150,7 +150,7 @@ func TestCounterGTRule_Apply(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := common.NewContext()
+			ctx := common.NewProxyContext()
 			if tt.contextFields.Key != "" {
 				ctx.AddToCounter(tt.contextFields.Key, tt.contextFields.Value)
 			}
@@ -195,7 +195,7 @@ func TestIngressRule_Apply(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &IngressRule{}
-			got, err := r.Apply(common.NewContext(), tt.data, tt.ingress)
+			got, err := r.Apply(common.NewProxyContext(), tt.data, tt.ingress)
 			if err != nil {
 				t.Errorf("Apply() error = %v", err)
 				return
@@ -244,7 +244,7 @@ func TestRegexRule_Apply(t *testing.T) {
 			r := &RegexRule{
 				Regex: tt.Regex,
 			}
-			got, err := r.Apply(common.NewContext(), tt.data, false)
+			got, err := r.Apply(common.NewProxyContext(), tt.data, false)
 			if err != nil {
 				t.Errorf("Apply() error = %v", err)
 				return

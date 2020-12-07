@@ -50,7 +50,7 @@ func (c *ProxyContext) GetFlag(flag string) bool {
 	return val
 }
 
-func NewContext() *ProxyContext {
+func NewProxyContext() *ProxyContext {
 	return &ProxyContext{
 		counters: make(map[string]int),
 		flags:    make(map[string]bool),

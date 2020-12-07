@@ -73,7 +73,7 @@ func main() {
 	tcpProxies := make([]*tcp.Proxy, 0)
 	for _, s := range pc.Services {
 		if s.Type == "tcp" {
-			p, err := tcp.NewProxy(&s, tcpRuleSet)
+			p, err := tcp.NewProxy(s, tcpRuleSet)
 			if err != nil {
 				logrus.Fatalf("Error creating tcp proxy: %v", err)
 			}
@@ -84,7 +84,7 @@ func main() {
 	httpProxies := make([]*http.Proxy, 0)
 	for _, s := range pc.Services {
 		if s.Type == "http" {
-			p, err := http.NewProxy(&s, httpRuleSet)
+			p, err := http.NewProxy(s, httpRuleSet)
 			if err != nil {
 				logrus.Fatalf("Error creating http proxy: %v", err)
 			}

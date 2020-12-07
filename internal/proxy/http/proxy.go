@@ -65,19 +65,23 @@ func (p *Proxy) GetHandler() http.HandlerFunc {
 	handleDrop := func(w http.ResponseWriter) {
 		w.WriteHeader(http.StatusNoContent)
 	}
+
+	reqLogger := p.logger.WithField("side", "request")
+	respLogger := p.logger.WithField("side", "response")
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		p.logger.Debugf("New request: %v", r)
-		pctx := new(common.ProxyContext)
+		reqLogger.Debugf("New request: %v", r)
+		pctx := common.NewProxyContext()
 
 		reqEntity := &wrapper.Request{Request: r}
 		if err := p.runFilters(pctx, reqEntity); err != nil {
-			p.logger.Errorf("Error running filters on request: %v", err)
+			reqLogger.Errorf("Error running filters: %v", err)
 			handleError(w)
 			return
 		}
 
 		if pctx.GetFlag(dropFlag) {
-			p.logger.WithField("side", "request").Debugf("Dropping connection")
+			reqLogger.Debugf("Dropping connection")
 			handleDrop(w)
 			return
 		}
@@ -88,20 +92,20 @@ func (p *Proxy) GetHandler() http.HandlerFunc {
 
 		response, err := p.client.Do(r)
 		if err != nil {
-			p.logger.Errorf("Error making target request: %v", err)
+			respLogger.Errorf("Error making target request: %v", err)
 			handleError(w)
 			return
 		}
 
 		respEntity := &wrapper.Response{Response: response}
 		if err := p.runFilters(pctx, respEntity); err != nil {
-			p.logger.Errorf("Error running filters on response: %v", err)
+			respLogger.Errorf("Error running filters: %v", err)
 			handleError(w)
 			return
 		}
 
 		if pctx.GetFlag(dropFlag) {
-			p.logger.WithField("side", "response").Debugf("Dropping connection")
+			respLogger.Debugf("Dropping connection")
 			handleDrop(w)
 			return
 		}
@@ -113,7 +117,7 @@ func (p *Proxy) GetHandler() http.HandlerFunc {
 			}
 		}
 		if _, err := io.Copy(w, response.Body); err != nil {
-			p.logger.Errorf("Error copying response body: %v", err)
+			respLogger.Errorf("Error copying body: %v", err)
 			handleError(w)
 			return
 		}
