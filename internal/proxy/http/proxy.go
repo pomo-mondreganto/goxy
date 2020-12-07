@@ -56,11 +56,25 @@ type Proxy struct {
 
 	serviceConfig *common.ServiceConfig
 	closing       bool
+	listening     bool
 	server        *http.Server
 	client        *http.Client
+	mu            sync.RWMutex
 	wg            *sync.WaitGroup
 	logger        *logrus.Entry
 	filters       []*filters.Filter
+}
+
+func (p *Proxy) GetListening() bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.listening
+}
+
+func (p *Proxy) SetListening(state bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.listening = state
 }
 
 func (p *Proxy) Start() error {
@@ -70,6 +84,9 @@ func (p *Proxy) Start() error {
 
 	p.wg = &sync.WaitGroup{}
 	p.wg.Add(1)
+
+	p.SetListening(true)
+
 	go p.serve()
 	return nil
 }
@@ -124,10 +141,7 @@ func (p *Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
 
 func (p *Proxy) getHandler() http.HandlerFunc {
 	handleError := func(w http.ResponseWriter) {
-		w.WriteHeader(http.StatusInternalServerError)
-		if _, err := w.Write([]byte("Internal problem")); err != nil {
-			p.logger.Errorf("Error writing response: %v", err)
-		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 	handleDrop := func(w http.ResponseWriter) {
 		w.WriteHeader(http.StatusNoContent)
@@ -138,6 +152,13 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		reqLogger.Debugf("New request: %v", r)
+
+		if !p.GetListening() {
+			reqLogger.Debugf("Proxy is not listening, dropping")
+			handleDrop(w)
+			return
+		}
+
 		pctx := common.NewProxyContext()
 
 		reqEntity := &wrapper.Request{Request: r}

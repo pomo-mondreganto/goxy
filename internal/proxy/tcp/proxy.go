@@ -57,16 +57,32 @@ type Proxy struct {
 
 	serviceConfig *common.ServiceConfig
 	closing       bool
+	listening     bool
 	wg            *sync.WaitGroup
+	mu            sync.RWMutex
 	listener      net.Listener
 	logger        *logrus.Entry
 	filters       []*filters.Filter
+}
+
+func (p *Proxy) GetListening() bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.listening
+}
+
+func (p *Proxy) SetListening(state bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.listening = state
 }
 
 func (p *Proxy) Start() error {
 	if p.wg != nil {
 		return ErrAlreadyRunning
 	}
+
+	p.SetListening(true)
 
 	var err error
 	p.listener, err = net.Listen("tcp", p.ListenAddr)
@@ -128,9 +144,12 @@ func (p *Proxy) String() string {
 }
 
 func (p *Proxy) oneSideHandler(conn *Connection, ingress bool) error {
-	var src io.Reader
-	var dst io.Writer
+	logger := p.logger.WithField("ingress", ingress)
 
+	var (
+		src io.Reader
+		dst io.Writer
+	)
 	if ingress {
 		src = conn.Remote
 		dst = conn.Local
@@ -138,8 +157,6 @@ func (p *Proxy) oneSideHandler(conn *Connection, ingress bool) error {
 		src = conn.Local
 		dst = conn.Remote
 	}
-
-	logger := p.logger.WithField("ingress", ingress)
 
 	buf := make([]byte, BufSize)
 	for {
@@ -250,6 +267,14 @@ func (p *Proxy) serve() {
 			}
 			return
 		}
+
+		if !p.GetListening() {
+			p.logger.Debugf("Proxy closed, dropping the connection")
+			if err := conn.Close(); err != nil {
+				p.logger.Errorf("Error dropping the connection: %v", err)
+			}
+		}
+
 		conns = append(conns, conn)
 		p.wg.Add(1)
 		go p.handleConnection(conn)
