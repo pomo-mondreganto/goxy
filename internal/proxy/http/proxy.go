@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"goxy/internal/proxy/http/filters"
 	"goxy/internal/proxy/http/wrapper"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
@@ -159,8 +161,15 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 			return
 		}
 
-		pctx := common.NewProxyContext()
+		reqBody, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			reqLogger.Errorf("Error reading body: %v", err)
+			handleError(w)
+			return
+		}
 
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))
+		pctx := common.NewProxyContext()
 		reqEntity := &wrapper.Request{Request: r}
 		if err := p.runFilters(pctx, reqEntity); err != nil {
 			reqLogger.Errorf("Error running filters: %v", err)
@@ -177,7 +186,7 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 		r.URL.Scheme = "http"
 		r.URL.Host = p.TargetAddr
 		r.RequestURI = ""
-
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))
 		response, err := p.client.Do(r)
 		if err != nil {
 			respLogger.Errorf("Error making target request: %v", err)
@@ -185,6 +194,19 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 			return
 		}
 
+		respBody, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			respLogger.Errorf("Error reading body: %v", err)
+			handleError(w)
+			return
+		}
+		if err := response.Body.Close(); err != nil {
+			respLogger.Errorf("Error closing body: %v", err)
+			handleError(w)
+			return
+		}
+
+		response.Body = ioutil.NopCloser(bytes.NewBuffer(respBody))
 		respEntity := &wrapper.Response{Response: response}
 		if err := p.runFilters(pctx, respEntity); err != nil {
 			respLogger.Errorf("Error running filters: %v", err)
@@ -198,6 +220,7 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 			return
 		}
 
+		response.Body = ioutil.NopCloser(bytes.NewBuffer(respBody))
 		w.WriteHeader(response.StatusCode)
 		for k, vals := range response.Header {
 			for _, v := range vals {

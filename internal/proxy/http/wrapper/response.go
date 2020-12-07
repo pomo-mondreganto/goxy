@@ -2,32 +2,48 @@ package wrapper
 
 import (
 	"encoding/json"
-	"github.com/sirupsen/logrus"
-	"io"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 )
 
 type Response struct {
 	Response *http.Response
+
+	bodyCache []byte
 }
 
-func (r *Response) GetJSON() interface{} {
-	dec := json.NewDecoder(r.GetBody())
-	result := new(interface{})
-	if err := dec.Decode(result); err != nil {
-		logrus.Warningf("Error decoding JSON in response: %v", err)
-		return nil
+func (r *Response) GetForm() (map[string][]string, error) {
+	// Response cannot contain a form.
+	return nil, nil
+}
+
+func (r *Response) GetJSON() (interface{}, error) {
+	data, err := r.GetBody()
+	if err != nil {
+		return nil, fmt.Errorf("getting body: %w", err)
 	}
-	return result
+	result := new(interface{})
+	if err := json.Unmarshal(data, result); err != nil {
+		return nil, fmt.Errorf("parsing json: %w", err)
+	}
+	return *result, nil
 }
 
 func (r *Response) GetIngress() bool {
 	return false
 }
 
-func (r *Response) GetBody() io.ReadCloser {
-	return r.Response.Body
+func (r *Response) GetBody() ([]byte, error) {
+	if r.bodyCache == nil {
+		var err error
+		r.bodyCache, err = ioutil.ReadAll(r.Response.Body)
+		if err != nil {
+			return nil, fmt.Errorf("reading body: err")
+		}
+	}
+	return r.bodyCache, nil
 }
 
 func (r *Response) GetCookies() []*http.Cookie {

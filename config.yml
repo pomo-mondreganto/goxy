@@ -20,10 +20,16 @@ rules:
       - "legit"
 
   - name: http_ingress_json_kek_not_contains_legit
-    type: http::ingress::not::json::contains
+    type: http::ingress::not::json::array::contains
     field: kek
     args:
       - "legit"
+
+  - name: http_form_username_contains_admin
+    type: http::form::array::any::contains
+    field: username
+    args:
+      - "admi"
 
 services:
   - name: test tcp
@@ -46,9 +52,11 @@ services:
     target: 127.0.0.1:5000
     filters:
       - rule: ingress
-        verdict: "alert::ingress!"
+        verdict: "alert::ingress"
       - rule: http_ingress_json_kek_not_contains_legit
-        verdict: drop
+        verdict: "alert::not legit"
+      - rule: http_form_username_contains_admin
+        verdict: "alert::admin in username form"
 
 web:
   username: admin

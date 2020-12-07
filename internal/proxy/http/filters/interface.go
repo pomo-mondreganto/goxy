@@ -71,10 +71,6 @@ func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
 				if rawRule, err = rawCreator(rc); err != nil {
 					return nil, fmt.Errorf("creating raw rule %s: %w", lastToken, err)
 				}
-				// if field is specified for rule, we need to wrap it into FieldWrapper.
-				if rc.Field != "" {
-					rawRule = NewFieldWrapper(rawRule, rc)
-				}
 			} else {
 				return nil, fmt.Errorf("invalid rule %s: last token invalid", rc.Type)
 			}
@@ -84,8 +80,13 @@ func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
 				if rawRule != nil {
 					if wrapperCreator, ok := DefaultRawRuleWrappers[ruleName]; ok {
 						rawRule = wrapperCreator(rawRule, rc)
+						continue
 					} else if entityConverter, ok := DefaultEntityConverters[ruleName]; ok {
 						// regular rules started, need to convert.
+						// if field is specified for rule, we need to wrap it into FieldWrapper.
+						if rc.Field != "" {
+							rawRule = NewFieldWrapper(rawRule, rc)
+						}
 						rule = NewRawRuleConverter(rawRule, entityConverter)
 						rawRule = nil
 						continue

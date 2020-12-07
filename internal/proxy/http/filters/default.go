@@ -20,6 +20,9 @@ var DefaultEntityConverters = map[string]EntityConverter{
 	"json":   JSONEntityConverter,
 	"cookie": CookiesEntityConverter,
 	"query":  QueryEntityConverter,
+	"body":   BodyEntityConverter,
+	"path":   PathEntityConverter,
+	"form":   FormEntityConverter,
 }
 
 var DefaultRawRuleCreators = map[string]RawRuleCreator{

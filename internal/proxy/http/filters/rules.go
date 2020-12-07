@@ -1,6 +1,7 @@
 package filters
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"goxy/internal/common"
@@ -37,8 +38,16 @@ func (r *ContainsStringRawRule) Apply(_ *common.ProxyContext, data interface{}) 
 				return true, nil
 			}
 		}
+	case []string:
+		for _, v := range data.([]string) {
+			if v == r.Value {
+				return true, nil
+			}
+		}
 	case string:
 		return strings.Contains(data.(string), r.Value), nil
+	case []byte:
+		return bytes.Contains(data.([]byte), []byte(r.Value)), nil
 	default:
 		return false, fmt.Errorf("data type %T: %w", data, ErrInvalidInputType)
 	}

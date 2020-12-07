@@ -1,15 +1,16 @@
 package wrapper
 
 import (
-	"io"
 	"net/http"
 	"net/url"
 )
 
 type Entity interface {
-	GetBody() io.ReadCloser
+	GetIngress() bool
 	GetCookies() []*http.Cookie
 	GetURL() *url.URL
-	GetIngress() bool
-	GetJSON() interface{}
+
+	GetBody() ([]byte, error)
+	GetJSON() (interface{}, error)
+	GetForm() (map[string][]string, error)
 }

@@ -35,6 +35,7 @@ func (w *AnyWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, er
 				return true, nil
 			}
 		}
+
 	case []interface{}:
 		for _, v := range data.([]interface{}) {
 			res, err := w.rule.Apply(ctx, v)
@@ -45,6 +46,18 @@ func (w *AnyWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, er
 				return true, nil
 			}
 		}
+
+	case []string:
+		for _, v := range data.([]string) {
+			res, err := w.rule.Apply(ctx, v)
+			if err != nil {
+				return false, fmt.Errorf("error in rule %T: %w", w.rule, err)
+			}
+			if res {
+				return true, nil
+			}
+		}
+
 	default:
 		return false, fmt.Errorf("data type %T: %w", data, ErrInvalidInputType)
 	}
@@ -57,14 +70,22 @@ type ArrayWrapper struct {
 }
 
 func (w *ArrayWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
-	if _, ok := data.([]interface{}); !ok {
-		return false, fmt.Errorf("data type %T: %w", data, ErrInvalidInputType)
+	switch data.(type) {
+	case []interface{}:
+		res, err := w.rule.Apply(ctx, data.([]interface{}))
+		if err != nil {
+			return false, fmt.Errorf("error in rule %T: %w", w.rule, err)
+		}
+		return res, nil
+	case []string:
+		res, err := w.rule.Apply(ctx, data.([]string))
+		if err != nil {
+			return false, fmt.Errorf("error in rule %T: %w", w.rule, err)
+		}
+		return res, nil
+	default:
+		return false, nil
 	}
-	res, err := w.rule.Apply(ctx, data)
-	if err != nil {
-		return false, fmt.Errorf("error in rule %T: %w", w.rule, err)
-	}
-	return res, nil
 }
 
 type FieldWrapper struct {
@@ -75,17 +96,17 @@ type FieldWrapper struct {
 func (w *FieldWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
 	result := data
 	for _, f := range w.fieldChain {
-		converted, ok := result.(map[string]interface{})
-		if !ok {
-			//return false, fmt.Errorf("no key %s: not a map: %w", f, ErrInvalidInputType)
+		switch result.(type) {
+		case map[string]interface{}:
+			converted := result.(map[string]interface{})
+			next, ok := converted[f]
+			if !ok {
+				return false, nil
+			}
+			result = next
+		default:
 			return false, nil
 		}
-		next, ok := converted[f]
-		if !ok {
-			//return false, fmt.Errorf("no key %s: %w", f, ErrInvalidInputType)
-			return false, nil
-		}
-		result = next
 	}
 	res, err := w.rule.Apply(ctx, result)
 	if err != nil {
