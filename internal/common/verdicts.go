@@ -7,6 +7,11 @@ import (
 	"strings"
 )
 
+const (
+	DropFlag   = "drop"
+	AcceptFlag = "accept"
+)
+
 type Verdict interface {
 	Mutate(ctx *ProxyContext) error
 }
@@ -15,14 +20,10 @@ func ParseVerdict(desc string) (Verdict, error) {
 	tokens := strings.Split(desc, "::")
 	switch strings.ToLower(tokens[0]) {
 	case "drop":
-		v := &VerdictSetFlag{
-			Key: "drop",
-		}
+		v := &VerdictSetFlag{DropFlag}
 		return v, nil
 	case "accept":
-		v := &VerdictSetFlag{
-			Key: "accept",
-		}
+		v := &VerdictSetFlag{AcceptFlag}
 		return v, nil
 	case "inc":
 		if len(tokens) < 2 {

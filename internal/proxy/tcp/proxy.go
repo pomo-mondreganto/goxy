@@ -15,11 +15,6 @@ import (
 
 const BufSize = 64 * 1024
 
-const (
-	dropFlag   = "drop"
-	acceptFlag = "accept"
-)
-
 var (
 	ErrAlreadyRunning  = errors.New("proxy is already running")
 	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
@@ -120,12 +115,16 @@ func (p *Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) 
 			if err := f.Verdict.Mutate(pctx); err != nil {
 				return fmt.Errorf("error mutating verdict %T: %w", f.Verdict, err)
 			}
-			if pctx.GetFlag(dropFlag) || pctx.GetFlag(acceptFlag) {
+			if pctx.GetFlag(common.DropFlag) || pctx.GetFlag(common.AcceptFlag) {
 				break
 			}
 		}
 	}
 	return nil
+}
+
+func (p *Proxy) String() string {
+	return fmt.Sprintf("TCP proxy %s", p.ListenAddr)
 }
 
 func (p *Proxy) oneSideHandler(conn *Connection, ingress bool) error {
@@ -153,7 +152,7 @@ func (p *Proxy) oneSideHandler(conn *Connection, ingress bool) error {
 				logger.Errorf("Error running filters: %v", err)
 			}
 
-			if conn.Context.GetFlag(dropFlag) {
+			if conn.Context.GetFlag(common.DropFlag) {
 				logger.Debugf("Dropping connection")
 				return ErrDropped
 			}

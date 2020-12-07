@@ -15,11 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	dropFlag   = "drop"
-	acceptFlag = "accept"
-)
-
 var (
 	ErrAlreadyRunning  = errors.New("proxy is already running")
 	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
@@ -105,6 +100,10 @@ func (p *Proxy) GetConfig() *common.ServiceConfig {
 	return p.serviceConfig
 }
 
+func (p *Proxy) String() string {
+	return fmt.Sprintf("HTTP proxy %s", p.ListenAddr)
+}
+
 func (p *Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
 	for _, f := range p.filters {
 		res, err := f.Rule.Apply(pctx, e)
@@ -115,7 +114,7 @@ func (p *Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
 			if err := f.Verdict.Mutate(pctx); err != nil {
 				return fmt.Errorf("error mutating verdict %T: %w", f.Verdict, err)
 			}
-			if pctx.GetFlag(dropFlag) || pctx.GetFlag(acceptFlag) {
+			if pctx.GetFlag(common.DropFlag) || pctx.GetFlag(common.AcceptFlag) {
 				break
 			}
 		}
@@ -148,7 +147,7 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 			return
 		}
 
-		if pctx.GetFlag(dropFlag) {
+		if pctx.GetFlag(common.DropFlag) {
 			reqLogger.Debugf("Dropping connection")
 			handleDrop(w)
 			return
@@ -172,7 +171,7 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 			return
 		}
 
-		if pctx.GetFlag(dropFlag) {
+		if pctx.GetFlag(common.DropFlag) {
 			respLogger.Debugf("Dropping connection")
 			handleDrop(w)
 			return

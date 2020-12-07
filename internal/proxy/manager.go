@@ -1,0 +1,93 @@
+package proxy
+
+import (
+	"context"
+	"fmt"
+	"goxy/internal/common"
+	"goxy/internal/proxy/http"
+	"goxy/internal/proxy/tcp"
+	"sync"
+	"time"
+
+	"github.com/sirupsen/logrus"
+
+	httpfilters "goxy/internal/proxy/http/filters"
+	tcpfilters "goxy/internal/proxy/tcp/filters"
+)
+
+func NewManager(cfg *common.ProxyConfig) (*Manager, error) {
+	tcpRuleSet, err := tcpfilters.NewRuleSet(cfg.Rules)
+	if err != nil {
+		logrus.Fatalf("Error creating tcp ruleset: %v", err)
+	}
+
+	httpRuleSet, err := httpfilters.NewRuleSet(cfg.Rules)
+	if err != nil {
+		logrus.Fatalf("Error creating http ruleset: %v", err)
+	}
+
+	proxies := make([]Proxy, 0)
+	for _, s := range cfg.Services {
+		var p Proxy
+		if s.Type == "tcp" {
+			if p, err = tcp.NewProxy(s, tcpRuleSet); err != nil {
+				logrus.Fatalf("Error creating tcp proxy: %v", err)
+			}
+		} else if s.Type == "http" {
+			if p, err = http.NewProxy(s, httpRuleSet); err != nil {
+				logrus.Fatalf("Error creating http proxy: %v", err)
+			}
+		} else {
+			return nil, fmt.Errorf("invalid proxy type: %s", s.Type)
+		}
+		proxies = append(proxies, p)
+	}
+
+	m := &Manager{proxies}
+	return m, nil
+}
+
+type Manager struct {
+	proxies []Proxy
+}
+
+func (m *Manager) StartAll() error {
+	for i, p := range m.proxies {
+		if err := p.Start(); err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+			for j := 0; j < i; j += 1 {
+				if serr := m.proxies[j].Shutdown(ctx); serr != nil {
+					logrus.Errorf("Error shutting down proxy %v forcefully: %v", m.proxies[j], serr)
+				}
+			}
+			cancel()
+			return fmt.Errorf("starting proxy %v: %w", p, err)
+		}
+	}
+	return nil
+}
+
+func (m *Manager) Shutdown(ctx context.Context) error {
+	wg := sync.WaitGroup{}
+	wg.Add(len(m.proxies))
+	errCh := make(chan error)
+	for _, p := range m.proxies {
+		go func(p Proxy) {
+			defer wg.Done()
+			if err := p.Shutdown(ctx); err != nil {
+				logrus.Errorf("Error shutting down proxy %v: %v", p, err)
+				select {
+				case errCh <- err:
+				default:
+				}
+			}
+		}(p)
+	}
+	wg.Wait()
+	select {
+	case err := <-errCh:
+		return fmt.Errorf("error shutting down proxy: %w", err)
+	default:
+		return nil
+	}
+}

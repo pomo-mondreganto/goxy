@@ -51,13 +51,13 @@ func TestParseVerdict(t *testing.T) {
 		{
 			"accept",
 			args{"accept"},
-			&VerdictSetFlag{Key: "accept"},
+			&VerdictSetFlag{Key: AcceptFlag},
 			false,
 		},
 		{
 			"drop",
 			args{"drop"},
-			&VerdictSetFlag{Key: "drop"},
+			&VerdictSetFlag{Key: DropFlag},
 			false,
 		},
 	}
