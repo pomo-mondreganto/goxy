@@ -40,6 +40,13 @@ type Server struct {
 }
 
 func (s *Server) registerRoutes() {
+	api := s.Router.Group("/api")
+	{
+		api.GET("/status/", s.statusHandler())
+		api.GET("/proxies/", s.proxyListingHandler())
+		api.PUT("/proxies/:id/", s.setProxyListening())
+	}
+
 	logrus.Infof("Serving static dir: %s", s.StaticDir)
 
 	s.Router.NoRoute(func(c *gin.Context) {

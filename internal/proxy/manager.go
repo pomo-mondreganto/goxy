@@ -2,8 +2,10 @@ package proxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"goxy/internal/common"
+	"goxy/internal/models"
 	"goxy/internal/proxy/http"
 	"goxy/internal/proxy/tcp"
 	"sync"
@@ -13,6 +15,10 @@ import (
 
 	httpfilters "goxy/internal/proxy/http/filters"
 	tcpfilters "goxy/internal/proxy/tcp/filters"
+)
+
+var (
+	ErrNoSuchProxy = errors.New("no such proxy")
 )
 
 func NewManager(cfg *common.ProxyConfig) (*Manager, error) {
@@ -90,4 +96,25 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 	default:
 		return nil
 	}
+}
+
+func (m *Manager) DumpProxies() []*models.ProxyDescription {
+	result := make([]*models.ProxyDescription, 0, len(m.proxies))
+	for i, p := range m.proxies {
+		desc := &models.ProxyDescription{
+			ID:        i + 1,
+			Service:   p.GetConfig(),
+			Listening: p.GetListening(),
+		}
+		result = append(result, desc)
+	}
+	return result
+}
+
+func (m *Manager) SetProxyListening(proxyID int, listening bool) error {
+	if proxyID < 1 || proxyID > len(m.proxies) {
+		return ErrNoSuchProxy
+	}
+	m.proxies[proxyID-1].SetListening(listening)
+	return nil
 }
