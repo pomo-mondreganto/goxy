@@ -5,10 +5,10 @@ var DefaultRules = map[string]Rule{
 	"egress":  &CompositeNotRule{new(IngressRule)},
 }
 
-var DefaultRuleFactories = map[string]RuleFactory{
-	"ingress": IngressRuleFactory,
-	"egress":  EgressRuleFactory,
-	"not":     NotRuleFactory,
+var DefaultRuleWrappers = map[string]RuleWrapperCreator{
+	"ingress": NewIngressWrapper,
+	"egress":  NewEgressWrapper,
+	"not":     NewNotWrapper,
 }
 
 var DefaultRuleCreators = map[string]RuleCreator{
