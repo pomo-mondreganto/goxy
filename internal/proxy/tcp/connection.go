@@ -23,7 +23,7 @@ func (c *Connection) Close() error {
 	return nil
 }
 
-func NewConnection(remote net.Conn, local net.Conn) *Connection {
+func newConnection(remote net.Conn, local net.Conn) *Connection {
 	return &Connection{
 		Remote:  remote,
 		Local:   local,

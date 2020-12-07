@@ -25,16 +25,84 @@ var (
 	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
 )
 
+func NewProxy(cfg *common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
+	fts := make([]*filters.Filter, 0, len(cfg.Filters))
+	for _, f := range cfg.Filters {
+		rule, ok := rs.GetRule(f.Rule)
+		if !ok {
+			return nil, fmt.Errorf("invalid rule name: %s", f.Rule)
+		}
+		verdict, err := common.ParseVerdict(f.Verdict)
+		if err != nil {
+			return nil, fmt.Errorf("parse verdict: %w", err)
+		}
+		filter := &filters.Filter{
+			Rule:    rule,
+			Verdict: verdict,
+		}
+		fts = append(fts, filter)
+	}
+
+	logger := logrus.WithField("type", "http").WithField("listen", cfg.Listen)
+	p := &Proxy{
+		ListenAddr: cfg.Listen,
+		TargetAddr: cfg.Target,
+
+		serviceConfig: cfg,
+		logger:        logger,
+		filters:       fts,
+	}
+	return p, nil
+}
+
 type Proxy struct {
 	ListenAddr string
 	TargetAddr string
 
-	closing bool
-	server  *http.Server
-	client  *http.Client
-	wg      *sync.WaitGroup
-	logger  *logrus.Entry
-	filters []*filters.Filter
+	serviceConfig *common.ServiceConfig
+	closing       bool
+	server        *http.Server
+	client        *http.Client
+	wg            *sync.WaitGroup
+	logger        *logrus.Entry
+	filters       []*filters.Filter
+}
+
+func (p *Proxy) Start() error {
+	if p.wg != nil {
+		return ErrAlreadyRunning
+	}
+
+	p.wg = &sync.WaitGroup{}
+	p.wg.Add(1)
+	go p.serve()
+	return nil
+}
+
+func (p *Proxy) Shutdown(ctx context.Context) error {
+	p.closing = true
+	if err := p.server.Shutdown(ctx); err != nil {
+		return fmt.Errorf("shutting down server: %w", err)
+	}
+	p.client.CloseIdleConnections()
+
+	done := make(chan interface{}, 1)
+	go func() {
+		p.wg.Wait()
+		done <- nil
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ErrShutdownTimeout
+	case <-done:
+		break
+	}
+	return nil
+}
+
+func (p *Proxy) GetConfig() *common.ServiceConfig {
+	return p.serviceConfig
 }
 
 func (p *Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
@@ -55,7 +123,7 @@ func (p *Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
 	return nil
 }
 
-func (p *Proxy) GetHandler() http.HandlerFunc {
+func (p *Proxy) getHandler() http.HandlerFunc {
 	handleError := func(w http.ResponseWriter) {
 		w.WriteHeader(http.StatusInternalServerError)
 		if _, err := w.Write([]byte("Internal problem")); err != nil {
@@ -124,7 +192,7 @@ func (p *Proxy) GetHandler() http.HandlerFunc {
 	}
 }
 
-func (p *Proxy) Serve() {
+func (p *Proxy) serve() {
 	defer p.wg.Done()
 
 	p.logger.Info("Starting")
@@ -138,73 +206,11 @@ func (p *Proxy) Serve() {
 		ReadTimeout:  time.Second * 15,
 		WriteTimeout: time.Second * 15,
 		IdleTimeout:  time.Second * 30,
-		Handler:      p.GetHandler(),
+		Handler:      p.getHandler(),
 	}
 
 	if err := p.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		p.logger.Errorf("Error in server: %v", err)
 	}
 	p.logger.Infof("Server shutdown complete")
-}
-
-func (p *Proxy) Start() error {
-	if p.wg != nil {
-		return ErrAlreadyRunning
-	}
-
-	p.wg = &sync.WaitGroup{}
-	p.wg.Add(1)
-	go p.Serve()
-	return nil
-}
-
-func (p *Proxy) Shutdown(ctx context.Context) error {
-	p.closing = true
-	if err := p.server.Shutdown(ctx); err != nil {
-		return fmt.Errorf("shutting down server: %w", err)
-	}
-	p.client.CloseIdleConnections()
-
-	done := make(chan interface{}, 1)
-	go func() {
-		p.wg.Wait()
-		done <- nil
-	}()
-
-	select {
-	case <-ctx.Done():
-		return ErrShutdownTimeout
-	case <-done:
-		break
-	}
-	return nil
-}
-
-func NewProxy(cfg *common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
-	fts := make([]*filters.Filter, 0, len(cfg.Filters))
-	for _, f := range cfg.Filters {
-		rule, ok := rs.GetRule(f.Rule)
-		if !ok {
-			return nil, fmt.Errorf("invalid rule name: %s", f.Rule)
-		}
-		verdict, err := common.ParseVerdict(f.Verdict)
-		if err != nil {
-			return nil, fmt.Errorf("parse verdict: %w", err)
-		}
-		filter := &filters.Filter{
-			Rule:    rule,
-			Verdict: verdict,
-		}
-		fts = append(fts, filter)
-	}
-
-	logger := logrus.WithField("type", "http").WithField("listen", cfg.Listen)
-	p := &Proxy{
-		ListenAddr: cfg.Listen,
-		TargetAddr: cfg.Target,
-
-		logger:  logger,
-		filters: fts,
-	}
-	return p, nil
 }
