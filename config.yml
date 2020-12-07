@@ -31,6 +31,12 @@ rules:
     args:
       - "admi"
 
+  - name: curl_request
+    type: http::headers::any::contains
+    field: "User-Agent"
+    args:
+      - "curl"
+
 services:
   - name: test tcp
     type: tcp
@@ -56,7 +62,9 @@ services:
       - rule: http_ingress_json_kek_not_contains_legit
         verdict: "alert::not legit"
       - rule: http_form_username_contains_admin
-        verdict: "alert::admin in username form"
+        verdict: "alert::admin in form username"
+      - rule: curl_request
+        verdict: "alert::curl request"
 
 web:
   username: admin

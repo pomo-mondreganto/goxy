@@ -8,6 +8,7 @@ import (
 type Entity interface {
 	GetIngress() bool
 	GetCookies() []*http.Cookie
+	GetHeaders() map[string][]string
 	GetURL() *url.URL
 
 	GetBody() ([]byte, error)

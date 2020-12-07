@@ -48,9 +48,12 @@ func CookiesEntityConverter(e wrapper.Entity) (interface{}, error) {
 	return result, nil
 }
 
+func HeadersEntityConverter(e wrapper.Entity) (interface{}, error) {
+	return convertMapListString(e.GetHeaders()), nil
+}
+
 func QueryEntityConverter(e wrapper.Entity) (interface{}, error) {
-	converted := convertMapListString(e.GetURL().Query())
-	return converted, nil
+	return convertMapListString(e.GetURL().Query()), nil
 }
 
 func BodyEntityConverter(e wrapper.Entity) (interface{}, error) {

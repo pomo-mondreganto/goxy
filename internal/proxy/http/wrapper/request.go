@@ -58,6 +58,10 @@ func (r *Request) GetCookies() []*http.Cookie {
 	return r.Request.Cookies()
 }
 
+func (r *Request) GetHeaders() map[string][]string {
+	return r.Request.Header
+}
+
 func (r *Request) GetURL() *url.URL {
 	return r.Request.URL
 }

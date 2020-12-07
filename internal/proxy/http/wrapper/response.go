@@ -50,6 +50,10 @@ func (r *Response) GetCookies() []*http.Cookie {
 	return r.Response.Cookies()
 }
 
+func (r *Response) GetHeaders() map[string][]string {
+	return r.Response.Header
+}
+
 func (r *Response) GetURL() *url.URL {
 	if r.Response.Request != nil {
 		return r.Response.Request.URL
