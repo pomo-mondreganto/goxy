@@ -21,7 +21,7 @@ rules:
 
   - name: http_ingress_json_kek_not_contains_legit
     type: http::ingress::not::json::array::contains
-    field: kek
+    field: kek.lol
     args:
       - "legit"
 

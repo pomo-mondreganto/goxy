@@ -15,6 +15,7 @@ var DefaultRuleCreators = map[string]RuleCreator{
 	"ingress":    NewIngressRule,
 	"regex":      NewRegexRule,
 	"contains":   NewContainsRule,
+	"icontains":  NewIContainsRule,
 	"counter_gt": NewCounterGTRule,
 }
 

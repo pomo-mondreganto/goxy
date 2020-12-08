@@ -27,7 +27,9 @@ var DefaultEntityConverters = map[string]EntityConverter{
 }
 
 var DefaultRawRuleCreators = map[string]RawRuleCreator{
-	"contains": NewContainsStringRawRule,
+	"contains":  NewContainsRawRule,
+	"icontains": NewIContainsRawRule,
+	"regex":     NewRegexRawRule,
 }
 
 var DefaultRawRuleWrappers = map[string]RawRuleWrapperCreator{
