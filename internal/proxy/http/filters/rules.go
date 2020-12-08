@@ -51,35 +51,13 @@ type ContainsRawRule struct {
 }
 
 func (r *ContainsRawRule) Apply(_ *common.ProxyContext, data interface{}) (bool, error) {
-	switch data.(type) {
-	case map[string]interface{}:
-		for _, v := range data.(map[string]interface{}) {
-			switch v.(type) {
-			case string:
-				if strings.Contains(v.(string), r.Value) {
-					return true, nil
-				}
-			case []byte:
-				if bytes.Contains(data.([]byte), []byte(r.Value)) {
-					return true, nil
-				}
-			}
-		}
-	case []string:
-		for _, v := range data.([]string) {
-			if v == r.Value {
-				return true, nil
-			}
-		}
-	case string:
-		return strings.Contains(data.(string), r.Value), nil
-	case []byte:
-		return bytes.Contains(data.([]byte), []byte(r.Value)), nil
-	default:
-		return false, fmt.Errorf("data type %T: %w", data, ErrInvalidInputType)
+	stringHandler := func(s string) bool {
+		return strings.Contains(s, r.Value)
 	}
-
-	return false, nil
+	bytesHandler := func(b []byte) bool {
+		return bytes.Contains(b, []byte(r.Value))
+	}
+	return processGenericMatchRule(stringHandler, bytesHandler, data)
 }
 
 type IContainsRawRule struct {
@@ -87,35 +65,13 @@ type IContainsRawRule struct {
 }
 
 func (r *IContainsRawRule) Apply(_ *common.ProxyContext, data interface{}) (bool, error) {
-	switch data.(type) {
-	case map[string]interface{}:
-		for _, v := range data.(map[string]interface{}) {
-			switch v.(type) {
-			case string:
-				if strings.Contains(strings.ToLower(v.(string)), r.Value) {
-					return true, nil
-				}
-			case []byte:
-				if bytes.Contains(bytes.ToLower(data.([]byte)), []byte(r.Value)) {
-					return true, nil
-				}
-			}
-		}
-	case []string:
-		for _, v := range data.([]string) {
-			if strings.ToLower(v) == r.Value {
-				return true, nil
-			}
-		}
-	case string:
-		return strings.Contains(strings.ToLower(data.(string)), r.Value), nil
-	case []byte:
-		return bytes.Contains(bytes.ToLower(data.([]byte)), []byte(r.Value)), nil
-	default:
-		return false, fmt.Errorf("data type %T: %w", data, ErrInvalidInputType)
+	stringHandler := func(s string) bool {
+		return strings.Contains(strings.ToLower(s), r.Value)
 	}
-
-	return false, nil
+	bytesHandler := func(b []byte) bool {
+		return bytes.Contains(bytes.ToLower(b), []byte(r.Value))
+	}
+	return processGenericMatchRule(stringHandler, bytesHandler, data)
 }
 
 type RegexRawRule struct {
@@ -123,30 +79,53 @@ type RegexRawRule struct {
 }
 
 func (r *RegexRawRule) Apply(_ *common.ProxyContext, data interface{}) (bool, error) {
+	stringHandler := func(s string) bool {
+		return r.re.MatchString(s)
+	}
+	bytesHandler := func(b []byte) bool {
+		return r.re.Match(b)
+	}
+	return processGenericMatchRule(stringHandler, bytesHandler, data)
+}
+
+func processGenericMatchRule(sh func(string) bool, bh func([]byte) bool, data interface{}) (bool, error) {
 	switch data.(type) {
 	case map[string]interface{}:
 		for _, v := range data.(map[string]interface{}) {
 			switch v.(type) {
 			case string:
-				if r.re.MatchString(v.(string)) {
+				if sh(v.(string)) {
 					return true, nil
 				}
 			case []byte:
-				if r.re.Match(v.([]byte)) {
+				if bh(v.([]byte)) {
+					return true, nil
+				}
+			}
+		}
+	case []interface{}:
+		for _, v := range data.([]interface{}) {
+			switch v.(type) {
+			case string:
+				if sh(v.(string)) {
+					return true, nil
+				}
+			case []byte:
+				if bh(v.([]byte)) {
 					return true, nil
 				}
 			}
 		}
 	case []string:
 		for _, v := range data.([]string) {
-			if r.re.MatchString(v) {
+			if sh(v) {
 				return true, nil
 			}
 		}
 	case string:
-		return r.re.MatchString(data.(string)), nil
+		return sh(data.(string)), nil
 	case []byte:
-		return r.re.Match(data.([]byte)), nil
+		return bh(data.([]byte)), nil
 	default:
 		return false, fmt.Errorf("data type %T: %w", data, ErrInvalidInputType)
 	}

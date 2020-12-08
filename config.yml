@@ -32,10 +32,10 @@ rules:
       - "admi"
 
   - name: curl_request
-    type: http::headers::any::contains
+    type: http::headers::any::icontains
     field: "User-Agent"
     args:
-      - "curl"
+      - "cUrl"
 
 services:
   - name: test tcp
