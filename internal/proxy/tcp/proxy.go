@@ -15,26 +15,110 @@ import (
 
 const BufSize = 64 * 1024
 
-const (
-	dropFlag   = "drop"
-	acceptFlag = "accept"
-)
-
 var (
 	ErrAlreadyRunning  = errors.New("proxy is already running")
 	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
 	ErrDropped         = errors.New("connection dropped")
 )
 
+func NewProxy(cfg *common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
+	fts := make([]*filters.Filter, 0, len(cfg.Filters))
+	for _, f := range cfg.Filters {
+		rule, ok := rs.GetRule(f.Rule)
+		if !ok {
+			return nil, fmt.Errorf("invalid rule name: %s", f.Rule)
+		}
+		verdict, err := common.ParseVerdict(f.Verdict)
+		if err != nil {
+			return nil, fmt.Errorf("parse verdict: %w", err)
+		}
+		filter := &filters.Filter{
+			Rule:    rule,
+			Verdict: verdict,
+		}
+		fts = append(fts, filter)
+	}
+
+	logger := logrus.WithField("type", "tcp").WithField("listen", cfg.Listen)
+	p := &Proxy{
+		ListenAddr: cfg.Listen,
+		TargetAddr: cfg.Target,
+
+		serviceConfig: cfg,
+		logger:        logger,
+		filters:       fts,
+	}
+	return p, nil
+}
+
 type Proxy struct {
 	ListenAddr string
 	TargetAddr string
 
-	closing  bool
-	wg       *sync.WaitGroup
-	listener net.Listener
-	logger   *logrus.Entry
-	filters  []*filters.Filter
+	serviceConfig *common.ServiceConfig
+	closing       bool
+	listening     bool
+	wg            *sync.WaitGroup
+	mu            sync.RWMutex
+	listener      net.Listener
+	logger        *logrus.Entry
+	filters       []*filters.Filter
+}
+
+func (p *Proxy) GetListening() bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.listening
+}
+
+func (p *Proxy) SetListening(state bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.listening = state
+}
+
+func (p *Proxy) Start() error {
+	if p.wg != nil {
+		return ErrAlreadyRunning
+	}
+
+	p.SetListening(true)
+
+	var err error
+	p.listener, err = net.Listen("tcp", p.ListenAddr)
+	if err != nil {
+		return fmt.Errorf("running listen: %w", err)
+	}
+
+	p.wg = &sync.WaitGroup{}
+	p.wg.Add(1)
+	go p.serve()
+	return nil
+}
+
+func (p *Proxy) Shutdown(ctx context.Context) error {
+	p.closing = true
+	if err := p.listener.Close(); err != nil {
+		return fmt.Errorf("closing listener: %w", err)
+	}
+
+	done := make(chan interface{}, 1)
+	go func() {
+		p.wg.Wait()
+		done <- nil
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ErrShutdownTimeout
+	case <-done:
+		break
+	}
+	return nil
+}
+
+func (p *Proxy) GetConfig() *common.ServiceConfig {
+	return p.serviceConfig
 }
 
 func (p *Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) error {
@@ -47,7 +131,7 @@ func (p *Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) 
 			if err := f.Verdict.Mutate(pctx); err != nil {
 				return fmt.Errorf("error mutating verdict %T: %w", f.Verdict, err)
 			}
-			if pctx.GetFlag(dropFlag) || pctx.GetFlag(acceptFlag) {
+			if pctx.GetFlag(common.DropFlag) || pctx.GetFlag(common.AcceptFlag) {
 				break
 			}
 		}
@@ -55,10 +139,17 @@ func (p *Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) 
 	return nil
 }
 
-func (p *Proxy) handleConnection(conn *Connection, ingress bool) error {
-	var src io.Reader
-	var dst io.Writer
+func (p *Proxy) String() string {
+	return fmt.Sprintf("TCP proxy %s", p.ListenAddr)
+}
 
+func (p *Proxy) oneSideHandler(conn *Connection, ingress bool) error {
+	logger := p.logger.WithField("ingress", ingress)
+
+	var (
+		src io.Reader
+		dst io.Writer
+	)
 	if ingress {
 		src = conn.Remote
 		dst = conn.Local
@@ -66,8 +157,6 @@ func (p *Proxy) handleConnection(conn *Connection, ingress bool) error {
 		src = conn.Local
 		dst = conn.Remote
 	}
-
-	logger := p.logger.WithField("ingress", ingress)
 
 	buf := make([]byte, BufSize)
 	for {
@@ -80,7 +169,7 @@ func (p *Proxy) handleConnection(conn *Connection, ingress bool) error {
 				logger.Errorf("Error running filters: %v", err)
 			}
 
-			if conn.Context.GetFlag(dropFlag) {
+			if conn.Context.GetFlag(common.DropFlag) {
 				logger.Debugf("Dropping connection")
 				return ErrDropped
 			}
@@ -105,7 +194,7 @@ func (p *Proxy) handleConnection(conn *Connection, ingress bool) error {
 	return nil
 }
 
-func (p *Proxy) HandleConn(conn net.Conn) {
+func (p *Proxy) handleConnection(conn net.Conn) {
 	defer p.wg.Done()
 	defer func() {
 		if err := conn.Close(); err != nil && !isConnectionClosedErr(err) {
@@ -120,7 +209,7 @@ func (p *Proxy) HandleConn(conn net.Conn) {
 		return
 	}
 
-	c := NewConnection(conn, localConn)
+	c := newConnection(conn, localConn)
 
 	handler := func(wg *sync.WaitGroup, ingress bool) {
 		logger := c.Logger.WithField("ingress", ingress)
@@ -132,7 +221,7 @@ func (p *Proxy) HandleConn(conn net.Conn) {
 			}
 			logger.Debug("Connection closed")
 		}()
-		if err := p.handleConnection(c, ingress); err != nil {
+		if err := p.oneSideHandler(c, ingress); err != nil {
 			if !isConnectionClosedErr(err) {
 				logger.Errorf("Error in connection: %v", err)
 			} else {
@@ -148,7 +237,7 @@ func (p *Proxy) HandleConn(conn net.Conn) {
 	wg.Wait()
 }
 
-func (p *Proxy) Serve() {
+func (p *Proxy) serve() {
 	defer p.wg.Done()
 	conns := make([]net.Conn, 0)
 	defer func() {
@@ -178,75 +267,16 @@ func (p *Proxy) Serve() {
 			}
 			return
 		}
+
+		if !p.GetListening() {
+			p.logger.Debugf("Proxy closed, dropping the connection")
+			if err := conn.Close(); err != nil {
+				p.logger.Errorf("Error dropping the connection: %v", err)
+			}
+		}
+
 		conns = append(conns, conn)
 		p.wg.Add(1)
-		go p.HandleConn(conn)
+		go p.handleConnection(conn)
 	}
-}
-
-func (p *Proxy) Start() error {
-	if p.wg != nil {
-		return ErrAlreadyRunning
-	}
-
-	var err error
-	p.listener, err = net.Listen("tcp", p.ListenAddr)
-	if err != nil {
-		return fmt.Errorf("running listen: %w", err)
-	}
-
-	p.wg = &sync.WaitGroup{}
-	p.wg.Add(1)
-	go p.Serve()
-	return nil
-}
-
-func (p *Proxy) Shutdown(ctx context.Context) error {
-	p.closing = true
-	if err := p.listener.Close(); err != nil {
-		return fmt.Errorf("closing listener: %w", err)
-	}
-
-	done := make(chan interface{}, 1)
-	go func() {
-		p.wg.Wait()
-		done <- nil
-	}()
-
-	select {
-	case <-ctx.Done():
-		return ErrShutdownTimeout
-	case <-done:
-		break
-	}
-	return nil
-}
-
-func NewProxy(cfg *common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
-	fts := make([]*filters.Filter, 0, len(cfg.Filters))
-	for _, f := range cfg.Filters {
-		rule, ok := rs.GetRule(f.Rule)
-		if !ok {
-			return nil, fmt.Errorf("invalid rule name: %s", f.Rule)
-		}
-		verdict, err := common.ParseVerdict(f.Verdict)
-		if err != nil {
-			return nil, fmt.Errorf("parse verdict: %w", err)
-		}
-		filter := &filters.Filter{
-			Rule:    rule,
-			Verdict: verdict,
-		}
-		fts = append(fts, filter)
-	}
-
-	logger := logrus.WithField("type", "tcp").WithField("listen", cfg.Listen)
-	p := &Proxy{
-		ListenAddr: cfg.Listen,
-		TargetAddr: cfg.Target,
-
-		logger:  logger,
-		filters: fts,
-	}
-	return p, nil
 }

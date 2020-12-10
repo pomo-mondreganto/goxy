@@ -19,6 +19,24 @@ rules:
     args:
       - "legit"
 
+  - name: http_ingress_json_kek_not_contains_legit
+    type: http::ingress::not::json::array::contains
+    field: kek.lol
+    args:
+      - "legit"
+
+  - name: http_form_username_contains_admin
+    type: http::form::array::any::contains
+    field: username
+    args:
+      - "admi"
+
+  - name: curl_request
+    type: http::headers::any::icontains
+    field: "User-Agent"
+    args:
+      - "cUrl"
+
 services:
   - name: test tcp
     type: tcp
@@ -31,7 +49,23 @@ services:
         verdict: "alert::show keks"
       - rule: ingress_attack
         verdict: inc::attacks
-      - rule: ingress_attack_short
-        verdict: inc::attacks
       - rule: egress
         verdict: "alert::show attacks"
+
+  - name: test http
+    type: http
+    listen: 0.0.0.0:5001
+    target: 127.0.0.1:5000
+    filters:
+      - rule: ingress
+        verdict: "alert::ingress"
+      - rule: http_ingress_json_kek_not_contains_legit
+        verdict: "alert::not legit"
+      - rule: http_form_username_contains_admin
+        verdict: "alert::admin in form username"
+      - rule: curl_request
+        verdict: "alert::curl request"
+
+web:
+  username: admin
+  password: 1234

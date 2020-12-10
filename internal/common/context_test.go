@@ -26,7 +26,7 @@ func TestProxyContext_AddToCounter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewContext()
+			c := NewProxyContext()
 			c.AddToCounter(tt.key, tt.value)
 			if c.counters[tt.key] != tt.value {
 				t.Errorf("AddToCounter(): invalid counters: want %d, got %d", tt.value, c.counters[tt.key])
@@ -195,7 +195,7 @@ func TestProxyContext_SetFlag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewContext()
+			c := NewProxyContext()
 			c.SetFlag(tt.key)
 			if _, ok := c.flags[tt.key]; !ok {
 				t.Errorf("SetFlag(): flag not set")
