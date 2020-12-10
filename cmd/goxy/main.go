@@ -19,7 +19,7 @@ import (
 
 var (
 	configFile = flag.String("config", "config.yml", "Path to the config file in YAML format")
-	logLevel   = flag.String("log_level", "DEBUG", "Log level {INFO|DEBUG|WARNING|ERROR}")
+	logLevel   = flag.String("log_level", "INFO", "Log level {INFO|DEBUG|WARNING|ERROR}")
 )
 
 func main() {
