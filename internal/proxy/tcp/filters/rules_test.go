@@ -255,3 +255,76 @@ func TestRegexRule_Apply(t *testing.T) {
 		})
 	}
 }
+
+func TestIContainsRule_Apply(t *testing.T) {
+	type fields struct {
+		Values [][]byte
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		data   []byte
+		want   bool
+	}{
+		{
+			"simple_contains",
+			fields{
+				[][]byte{
+					[]byte("test"),
+				}},
+			[]byte("some tEsT data"),
+			true,
+		},
+		{
+			"simple_not_contains",
+			fields{
+				[][]byte{
+					[]byte("test"),
+				}},
+			[]byte("some tst data"),
+			false,
+		},
+		{
+			"no args",
+			fields{
+				[][]byte{}},
+			[]byte("some test data"),
+			false,
+		},
+		{
+			"contains multiple",
+			fields{
+				[][]byte{
+					[]byte("first"),
+					[]byte("second"),
+				}},
+			[]byte("containing only the sEcond string"),
+			true,
+		},
+		{
+			"not contains multiple",
+			fields{
+				[][]byte{
+					[]byte("first"),
+					[]byte("second"),
+				}},
+			[]byte("contaIns nothing"),
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &IContainsRule{
+				Values: tt.fields.Values,
+			}
+			got, err := r.Apply(common.NewProxyContext(), tt.data, false)
+			if err != nil {
+				t.Errorf("Apply() error = %v", err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Apply() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
