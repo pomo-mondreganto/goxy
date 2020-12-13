@@ -10,8 +10,7 @@ type Rule interface {
 	Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error)
 }
 
-type RuleCreator func(cfg *common.RuleConfig) (Rule, error)
-type CompositeRuleCreator func(rs *RuleSet, cfg *common.RuleConfig) (Rule, error)
+type RuleCreator func(rs RuleSet, cfg *common.RuleConfig) (Rule, error)
 type RuleWrapperCreator func(rule Rule, cfg *common.RuleConfig) Rule
 
 type RuleSet struct {
@@ -29,7 +28,7 @@ func (rs *RuleSet) GetRule(name string) (Rule, bool) {
 }
 
 func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
-	rs := &RuleSet{Rules: make(map[string]Rule)}
+	rs := RuleSet{Rules: make(map[string]Rule)}
 
 	for _, rc := range cfg {
 		if strings.HasPrefix(rc.Type, "tcp::") {
@@ -38,24 +37,14 @@ func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
 				return nil, fmt.Errorf("invalid rule: %s", rc.Type)
 			}
 
-			var (
-				ok               bool
-				err              error
-				rule             Rule
-				compositeCreator CompositeRuleCreator
-				creator          RuleCreator
-			)
-
 			// the last rule in chain must be either the composite rule or some rule creator
 			lastToken := tokens[len(tokens)-1]
-			if compositeCreator, ok = DefaultCompositeRuleCreators[lastToken]; ok {
-				// rule is composite
-				if rule, err = compositeCreator(rs, rc); err != nil {
+
+			var rule Rule
+			var err error
+			if creator, ok := DefaultRuleCreators[lastToken]; ok {
+				if rule, err = creator(rs, rc); err != nil {
 					return nil, fmt.Errorf("creating rule %s: %w", lastToken, err)
-				}
-			} else if creator, ok = DefaultRuleCreators[lastToken]; ok {
-				if rule, err = creator(rc); err != nil {
-					return nil, fmt.Errorf("creating raw rule %s: %w", lastToken, err)
 				}
 			} else {
 				return nil, fmt.Errorf("invalid rule %s: last token invalid", rc.Type)
@@ -74,7 +63,7 @@ func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
 		}
 	}
 
-	return rs, nil
+	return &rs, nil
 }
 
 type Filter struct {

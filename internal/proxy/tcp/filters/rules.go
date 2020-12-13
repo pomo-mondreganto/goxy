@@ -14,7 +14,7 @@ var (
 	ErrInvalidRuleArgs = errors.New("invalid rule arguments")
 )
 
-func NewRegexRule(cfg *common.RuleConfig) (Rule, error) {
+func NewRegexRule(_ RuleSet, cfg *common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
@@ -25,7 +25,7 @@ func NewRegexRule(cfg *common.RuleConfig) (Rule, error) {
 	return &RegexRule{Regex: r}, nil
 }
 
-func NewContainsRule(cfg *common.RuleConfig) (Rule, error) {
+func NewContainsRule(_ RuleSet, cfg *common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
@@ -36,7 +36,7 @@ func NewContainsRule(cfg *common.RuleConfig) (Rule, error) {
 	return r, nil
 }
 
-func NewIContainsRule(cfg *common.RuleConfig) (Rule, error) {
+func NewIContainsRule(_ RuleSet, cfg *common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
@@ -47,11 +47,11 @@ func NewIContainsRule(cfg *common.RuleConfig) (Rule, error) {
 	return r, nil
 }
 
-func NewIngressRule(_ *common.RuleConfig) (Rule, error) {
+func NewIngressRule(_ RuleSet, _ *common.RuleConfig) (Rule, error) {
 	return new(IngressRule), nil
 }
 
-func NewCounterGTRule(cfg *common.RuleConfig) (Rule, error) {
+func NewCounterGTRule(_ RuleSet, cfg *common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) != 2 {
 		return nil, ErrInvalidRuleArgs
 	}

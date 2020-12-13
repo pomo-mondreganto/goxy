@@ -22,7 +22,7 @@ func (r *CompositeAndRule) Apply(ctx *common.ProxyContext, buf []byte, ingress b
 	return true, nil
 }
 
-func NewCompositeAndRule(rs *RuleSet, cfg *common.RuleConfig) (Rule, error) {
+func NewCompositeAndRule(rs RuleSet, cfg *common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) < 2 {
 		return nil, ErrInvalidRuleArgs
 	}
@@ -49,7 +49,7 @@ func (r *CompositeNotRule) Apply(ctx *common.ProxyContext, buf []byte, ingress b
 	return !res, nil
 }
 
-func NewCompositeNotRule(rs *RuleSet, cfg *common.RuleConfig) (Rule, error) {
+func NewCompositeNotRule(rs RuleSet, cfg *common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
@@ -61,10 +61,4 @@ func NewCompositeNotRule(rs *RuleSet, cfg *common.RuleConfig) (Rule, error) {
 	}
 
 	return &CompositeNotRule{Rule: rule}, nil
-}
-
-func (c CompositeRuleCreator) PartialConvert(rs *RuleSet) RuleCreator {
-	return func(cfg *common.RuleConfig) (Rule, error) {
-		return c(rs, cfg)
-	}
 }

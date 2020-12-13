@@ -17,9 +17,7 @@ var DefaultRuleCreators = map[string]RuleCreator{
 	"contains":   NewContainsRule,
 	"icontains":  NewIContainsRule,
 	"counter_gt": NewCounterGTRule,
-}
 
-var DefaultCompositeRuleCreators = map[string]CompositeRuleCreator{
 	"and": NewCompositeAndRule,
 	"not": NewCompositeNotRule,
 }
