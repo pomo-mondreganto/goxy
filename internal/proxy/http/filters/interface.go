@@ -15,12 +15,11 @@ type RawRule interface {
 	Apply(ctx *common.ProxyContext, data interface{}) (bool, error)
 }
 
-type RuleCreator func(cfg *common.RuleConfig) (Rule, error)
-type RawRuleCreator func(cfg *common.RuleConfig) (RawRule, error)
-type CompositeRuleCreator func(rs *RuleSet, cfg *common.RuleConfig) (Rule, error)
+type RuleCreator func(rs RuleSet, cfg common.RuleConfig) (Rule, error)
+type RawRuleCreator func(cfg common.RuleConfig) (RawRule, error)
 
-type RuleWrapperCreator func(rule Rule, _ *common.RuleConfig) Rule
-type RawRuleWrapperCreator func(rule RawRule, cfg *common.RuleConfig) RawRule
+type RuleWrapperCreator func(rule Rule, _ common.RuleConfig) Rule
+type RawRuleWrapperCreator func(rule RawRule, cfg common.RuleConfig) RawRule
 
 type RuleSet struct {
 	Rules map[string]Rule
@@ -36,8 +35,8 @@ func (rs *RuleSet) GetRule(name string) (Rule, bool) {
 	return nil, false
 }
 
-func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
-	rs := &RuleSet{Rules: make(map[string]Rule)}
+func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
+	rs := RuleSet{Rules: make(map[string]Rule)}
 
 	for _, rc := range cfg {
 		if strings.HasPrefix(rc.Type, "http::") {
@@ -47,12 +46,12 @@ func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
 			}
 
 			var (
-				ok               bool
-				err              error
-				rawRule          RawRule
-				rawCreator       RawRuleCreator
-				rule             Rule
-				compositeCreator CompositeRuleCreator
+				ok         bool
+				err        error
+				rawRule    RawRule
+				rawCreator RawRuleCreator
+				creator    RuleCreator
+				rule       Rule
 			)
 
 			// Some block at the end of rules (can be empty) contains only raw rules.
@@ -61,9 +60,9 @@ func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
 
 			// the last rule in chain must be either the composite rule or raw rule.
 			lastToken := tokens[len(tokens)-1]
-			if compositeCreator, ok = DefaultCompositeRuleCreators[lastToken]; ok {
-				// rule is composite
-				if rule, err = compositeCreator(rs, rc); err != nil {
+			if creator, ok = DefaultRuleCreators[lastToken]; ok {
+				// default rule type
+				if rule, err = creator(rs, rc); err != nil {
 					return nil, fmt.Errorf("creating rule %s: %w", lastToken, err)
 				}
 			} else if rawCreator, ok = DefaultRawRuleCreators[lastToken]; ok {
@@ -110,7 +109,7 @@ func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
 		}
 	}
 
-	return rs, nil
+	return &rs, nil
 }
 
 type Filter struct {

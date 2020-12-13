@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.uber.org/atomic"
 	"goxy/internal/common"
 	"goxy/internal/proxy/tcp/filters"
 	"io"
@@ -16,13 +17,12 @@ import (
 const BufSize = 64 * 1024
 
 var (
-	ErrAlreadyRunning  = errors.New("proxy is already running")
 	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
 	ErrDropped         = errors.New("connection dropped")
 )
 
-func NewProxy(cfg *common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
-	fts := make([]*filters.Filter, 0, len(cfg.Filters))
+func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
+	fts := make([]filters.Filter, 0, len(cfg.Filters))
 	for _, f := range cfg.Filters {
 		rule, ok := rs.GetRule(f.Rule)
 		if !ok {
@@ -32,7 +32,7 @@ func NewProxy(cfg *common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parse verdict: %w", err)
 		}
-		filter := &filters.Filter{
+		filter := filters.Filter{
 			Rule:    rule,
 			Verdict: verdict,
 		}
@@ -55,33 +55,24 @@ type Proxy struct {
 	ListenAddr string
 	TargetAddr string
 
-	serviceConfig *common.ServiceConfig
+	serviceConfig common.ServiceConfig
 	closing       bool
-	listening     bool
-	wg            *sync.WaitGroup
-	mu            sync.RWMutex
+	listening     atomic.Bool
+	wg            sync.WaitGroup
 	listener      net.Listener
 	logger        *logrus.Entry
-	filters       []*filters.Filter
+	filters       []filters.Filter
 }
 
 func (p *Proxy) GetListening() bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.listening
+	return p.listening.Load()
 }
 
 func (p *Proxy) SetListening(state bool) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.listening = state
+	p.listening.Store(state)
 }
 
 func (p *Proxy) Start() error {
-	if p.wg != nil {
-		return ErrAlreadyRunning
-	}
-
 	p.SetListening(true)
 
 	var err error
@@ -90,7 +81,6 @@ func (p *Proxy) Start() error {
 		return fmt.Errorf("running listen: %w", err)
 	}
 
-	p.wg = &sync.WaitGroup{}
 	p.wg.Add(1)
 	go p.serve()
 	return nil
@@ -118,7 +108,7 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 }
 
 func (p *Proxy) GetConfig() *common.ServiceConfig {
-	return p.serviceConfig
+	return &p.serviceConfig
 }
 
 func (p *Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) error {

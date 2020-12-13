@@ -15,21 +15,21 @@ var (
 	ErrInvalidInputType = errors.New("invalid input data")
 )
 
-func NewContainsRawRule(cfg *common.RuleConfig) (RawRule, error) {
+func NewContainsRawRule(cfg common.RuleConfig) (RawRule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
 	return &ContainsRawRule{cfg.Args[0]}, nil
 }
 
-func NewIContainsRawRule(cfg *common.RuleConfig) (RawRule, error) {
+func NewIContainsRawRule(cfg common.RuleConfig) (RawRule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
 	return &IContainsRawRule{strings.ToLower(cfg.Args[0])}, nil
 }
 
-func NewRegexRawRule(cfg *common.RuleConfig) (RawRule, error) {
+func NewRegexRawRule(cfg common.RuleConfig) (RawRule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}

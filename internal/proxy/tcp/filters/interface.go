@@ -10,8 +10,8 @@ type Rule interface {
 	Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error)
 }
 
-type RuleCreator func(rs RuleSet, cfg *common.RuleConfig) (Rule, error)
-type RuleWrapperCreator func(rule Rule, cfg *common.RuleConfig) Rule
+type RuleCreator func(rs RuleSet, cfg common.RuleConfig) (Rule, error)
+type RuleWrapperCreator func(rule Rule, cfg common.RuleConfig) Rule
 
 type RuleSet struct {
 	Rules map[string]Rule
@@ -27,7 +27,7 @@ func (rs *RuleSet) GetRule(name string) (Rule, bool) {
 	return nil, false
 }
 
-func NewRuleSet(cfg []*common.RuleConfig) (*RuleSet, error) {
+func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 	rs := RuleSet{Rules: make(map[string]Rule)}
 
 	for _, rc := range cfg {

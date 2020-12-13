@@ -6,15 +6,15 @@ import (
 	"strings"
 )
 
-func NewAnyWrapper(r RawRule, _ *common.RuleConfig) RawRule {
+func NewAnyWrapper(r RawRule, _ common.RuleConfig) RawRule {
 	return &AnyWrapper{r}
 }
 
-func NewArrayWrapper(r RawRule, _ *common.RuleConfig) RawRule {
+func NewArrayWrapper(r RawRule, _ common.RuleConfig) RawRule {
 	return &ArrayWrapper{r}
 }
 
-func NewFieldWrapper(r RawRule, cfg *common.RuleConfig) RawRule {
+func NewFieldWrapper(r RawRule, cfg common.RuleConfig) RawRule {
 	fieldChain := strings.Split(cfg.Field, ".")
 	return &FieldWrapper{r, fieldChain}
 }

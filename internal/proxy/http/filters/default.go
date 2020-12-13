@@ -11,7 +11,7 @@ var DefaultRuleWrappers = map[string]RuleWrapperCreator{
 	"not":     NewNotWrapper,
 }
 
-var DefaultCompositeRuleCreators = map[string]CompositeRuleCreator{
+var DefaultRuleCreators = map[string]RuleCreator{
 	"and": NewCompositeAndRule,
 	"not": NewCompositeNotRule,
 }

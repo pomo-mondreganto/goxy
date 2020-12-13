@@ -5,15 +5,15 @@ import (
 	"goxy/internal/common"
 )
 
-func NewIngressWrapper(rule Rule, _ *common.RuleConfig) Rule {
+func NewIngressWrapper(rule Rule, _ common.RuleConfig) Rule {
 	return &IngressWrapper{rule}
 }
 
-func NewEgressWrapper(rule Rule, _ *common.RuleConfig) Rule {
+func NewEgressWrapper(rule Rule, _ common.RuleConfig) Rule {
 	return &EgressWrapper{rule}
 }
 
-func NewNotWrapper(rule Rule, _ *common.RuleConfig) Rule {
+func NewNotWrapper(rule Rule, _ common.RuleConfig) Rule {
 	return &NotWrapper{rule}
 }
 
