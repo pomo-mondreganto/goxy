@@ -102,9 +102,10 @@ func (m *Manager) DumpProxies() []*models.ProxyDescription {
 	result := make([]*models.ProxyDescription, 0, len(m.proxies))
 	for i, p := range m.proxies {
 		desc := &models.ProxyDescription{
-			ID:        i + 1,
-			Service:   p.GetConfig(),
-			Listening: p.GetListening(),
+			ID:                 i + 1,
+			Service:            p.GetConfig(),
+			Listening:          p.GetListening(),
+			FilterDescriptions: p.GetFilterDescriptions(),
 		}
 		result = append(result, desc)
 	}

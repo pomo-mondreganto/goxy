@@ -8,6 +8,7 @@ import (
 
 type Rule interface {
 	Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error)
+	fmt.Stringer
 }
 
 type RuleCreator func(rs RuleSet, cfg common.RuleConfig) (Rule, error)
@@ -69,4 +70,8 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 type Filter struct {
 	Rule    Rule
 	Verdict common.Verdict
+}
+
+func (f *Filter) String() string {
+	return fmt.Sprintf("if %s: %s", f.Rule, f.Verdict)
 }

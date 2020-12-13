@@ -112,6 +112,10 @@ func (p *Proxy) String() string {
 	return fmt.Sprintf("HTTP proxy %s", p.ListenAddr)
 }
 
+func (p *Proxy) GetFilterDescriptions() []string {
+	return nil
+}
+
 func (p *Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
 	for _, f := range p.filters {
 		res, err := f.Rule.Apply(pctx, e)

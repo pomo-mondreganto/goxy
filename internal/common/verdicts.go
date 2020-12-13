@@ -14,6 +14,7 @@ const (
 
 type Verdict interface {
 	Mutate(ctx *ProxyContext) error
+	fmt.Stringer
 }
 
 func ParseVerdict(desc string) (Verdict, error) {
@@ -57,6 +58,10 @@ func (v *VerdictSetFlag) Mutate(ctx *ProxyContext) error {
 	return nil
 }
 
+func (v *VerdictSetFlag) String() string {
+	return fmt.Sprintf("set %s", v.Key)
+}
+
 type VerdictIncrement struct {
 	Key string
 }
@@ -64,6 +69,10 @@ type VerdictIncrement struct {
 func (v *VerdictIncrement) Mutate(ctx *ProxyContext) error {
 	ctx.AddToCounter(v.Key, 1)
 	return nil
+}
+
+func (v *VerdictIncrement) String() string {
+	return fmt.Sprintf("inc %s", v.Key)
 }
 
 type VerdictDecrement struct {
@@ -75,6 +84,10 @@ func (v *VerdictDecrement) Mutate(ctx *ProxyContext) error {
 	return nil
 }
 
+func (v *VerdictDecrement) String() string {
+	return fmt.Sprintf("dec %s", v.Key)
+}
+
 type VerdictAlert struct {
 	Logger *logrus.Entry
 }
@@ -82,4 +95,8 @@ type VerdictAlert struct {
 func (v *VerdictAlert) Mutate(ctx *ProxyContext) error {
 	v.Logger.WithFields(ctx.DumpFields()).Warningf("Alert triggered")
 	return nil
+}
+
+func (v *VerdictAlert) String() string {
+	return "alert"
 }

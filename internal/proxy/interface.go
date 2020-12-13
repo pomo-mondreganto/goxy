@@ -12,6 +12,7 @@ type Proxy interface {
 	GetConfig() *common.ServiceConfig
 	GetListening() bool
 	SetListening(state bool)
+	GetFilterDescriptions() []string
 
 	fmt.Stringer
 }

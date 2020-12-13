@@ -133,6 +133,14 @@ func (p *Proxy) String() string {
 	return fmt.Sprintf("TCP proxy %s", p.ListenAddr)
 }
 
+func (p *Proxy) GetFilterDescriptions() []string {
+	result := make([]string, 0, len(p.filters))
+	for _, f := range p.filters {
+		result = append(result, f.String())
+	}
+	return result
+}
+
 func (p *Proxy) oneSideHandler(conn *Connection, ingress bool) error {
 	logger := p.logger.WithField("ingress", ingress)
 
