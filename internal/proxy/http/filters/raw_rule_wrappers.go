@@ -19,6 +19,10 @@ func NewFieldWrapper(r RawRule, cfg common.RuleConfig) RawRule {
 	return &FieldWrapper{r, fieldChain}
 }
 
+func NewNotWrapperRaw(r RawRule, _ common.RuleConfig) RawRule {
+	return &NotWrapperRaw{r}
+}
+
 type AnyWrapper struct {
 	rule RawRule
 }
@@ -113,4 +117,16 @@ func (w *FieldWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, 
 		return false, fmt.Errorf("error in rule %T: %w", w.rule, err)
 	}
 	return res, nil
+}
+
+type NotWrapperRaw struct {
+	rule RawRule
+}
+
+func (w *NotWrapperRaw) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
+	res, err := w.rule.Apply(ctx, data)
+	if err != nil {
+		return false, fmt.Errorf("error in rule %T: %w", w.rule, err)
+	}
+	return !res, nil
 }

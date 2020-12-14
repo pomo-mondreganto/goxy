@@ -35,4 +35,5 @@ var DefaultRawRuleCreators = map[string]RawRuleCreator{
 var DefaultRawRuleWrappers = map[string]RawRuleWrapperCreator{
 	"any":   NewAnyWrapper,
 	"array": NewArrayWrapper,
+	"not":   NewNotWrapperRaw,
 }
