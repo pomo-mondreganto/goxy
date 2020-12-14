@@ -2,45 +2,17 @@
   <el-table
     border
     :data="tableData"
-    :row-key="getProxyKey"
+    :row-key="(row) => row.id"
     :row-class-name="tableRowClassName"
     :expand-row-keys="expandRowKeys"
     @expand-change="expandChange"
   >
     <el-table-column type="expand">
       <template slot-scope="props">
-        <el-table
-          border
-          :style="{ width: '50%' }"
-          :data="props.row.filter_descriptions"
-        >
-          <el-table-column
-            sortable
-            prop="id"
-            align="center"
-            width="70"
-            label="ID"
-          />
-          <el-table-column prop="rule" label="Rule" />
-          <el-table-column prop="verdict" width="100" label="Verdict" />
-          <el-table-column align="center" width="100" label="Enabled">
-            <template v-slot="scope">
-              <el-switch
-                v-model="scope.row.enabled"
-                @change="
-                  toggleFilter(
-                    scope.row.proxy_id,
-                    scope.row.id,
-                    scope.row.enabled
-                  )
-                "
-                active-color="#13ce66"
-                inactive-color="#ff4949"
-              >
-              </el-switch>
-            </template>
-          </el-table-column>
-        </el-table>
+        <filters-table
+          :filters="props.row.filter_descriptions"
+          @reload="updateProxies"
+        />
       </template>
     </el-table-column>
     <el-table-column sortable prop="id" align="center" width="70" label="ID">
@@ -57,9 +29,9 @@
       <template v-slot="scope">
         <el-switch
           v-model="scope.row.listening"
-          @change="toggleListening(scope.row.id, scope.row.listening)"
           active-color="#13ce66"
           inactive-color="#ff4949"
+          @change="toggleListening(scope.row.id, scope.row.listening)"
         >
         </el-switch>
       </template>
@@ -68,7 +40,12 @@
 </template>
 
 <script>
+import FiltersTable from "@/components/FiltersTable.vue";
+
 export default {
+  components: {
+    FiltersTable,
+  },
   methods: {
     async toggleListening(id, listening) {
       try {
@@ -80,19 +57,7 @@ export default {
         console.error("error!");
       }
     },
-    async toggleFilter(proxyId, filterId, enabled) {
-      try {
-        await this.$http.put(`/proxies/${proxyId}/filter_enabled/`, {
-          id: filterId,
-          enabled: enabled,
-        });
-        await this.updateProxies();
-      } catch {
-        console.error("error!");
-      }
-    },
     tableRowClassName: function ({ row }) {
-      console.log("called table row", row);
       if (!row.listening) {
         return "disabled-row";
       }
@@ -108,7 +73,6 @@ export default {
         this.tableData = [];
       }
     },
-    getProxyKey: (row) => row.id,
     expandChange: function (row, expandedRows) {
       this.expandRowKeys = expandedRows.map((obj) => obj.id);
       console.log(this.expandRowKeys);
