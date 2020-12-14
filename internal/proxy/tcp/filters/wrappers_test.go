@@ -9,9 +9,13 @@ type trueRule struct {
 	calls int
 }
 
-func (t *trueRule) Apply(_ *common.ProxyContext, _ []byte, _ bool) (bool, error) {
-	t.calls += 1
+func (r *trueRule) Apply(_ *common.ProxyContext, _ []byte, _ bool) (bool, error) {
+	r.calls += 1
 	return true, nil
+}
+
+func (r trueRule) String() string {
+	return "true"
 }
 
 func TestEgressWrapper_Apply(t *testing.T) {

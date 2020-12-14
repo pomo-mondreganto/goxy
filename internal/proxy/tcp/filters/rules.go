@@ -33,10 +33,7 @@ func NewContainsRule(_ RuleSet, cfg common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
-	r := new(ContainsRule)
-	for _, s := range cfg.Args {
-		r.values = append(r.values, []byte(s))
-	}
+	r := &ContainsRule{value: []byte(cfg.Args[0])}
 	return r, nil
 }
 
@@ -44,10 +41,7 @@ func NewIContainsRule(_ RuleSet, cfg common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
-	r := new(ContainsRule)
-	for _, s := range cfg.Args {
-		r.values = append(r.values, []byte(strings.ToLower(s)))
-	}
+	r := &IContainsRule{value: []byte(strings.ToLower(cfg.Args[0]))}
 	return r, nil
 }
 
@@ -89,37 +83,27 @@ func (r *RegexRule) String() string {
 }
 
 type ContainsRule struct {
-	values [][]byte
+	value []byte
 }
 
 func (r *ContainsRule) Apply(_ *common.ProxyContext, buf []byte, _ bool) (bool, error) {
-	for _, v := range r.values {
-		if bytes.Contains(buf, v) {
-			return true, nil
-		}
-	}
-	return false, nil
+	return bytes.Contains(buf, r.value), nil
 }
 
 func (r *ContainsRule) String() string {
-	return fmt.Sprintf("contains %+v", r.values)
+	return fmt.Sprintf("contains %s", string(r.value))
 }
 
 type IContainsRule struct {
-	values [][]byte
+	value []byte
 }
 
 func (r *IContainsRule) Apply(_ *common.ProxyContext, buf []byte, _ bool) (bool, error) {
-	for _, v := range r.values {
-		if bytes.Contains(bytes.ToLower(buf), v) {
-			return true, nil
-		}
-	}
-	return false, nil
+	return bytes.Contains(bytes.ToLower(buf), r.value), nil
 }
 
 func (r *IContainsRule) String() string {
-	return fmt.Sprintf("icontains %+v", r.values)
+	return fmt.Sprintf("icontains %s", string(r.value))
 }
 
 type CounterGTRule struct {

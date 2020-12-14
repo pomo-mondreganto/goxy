@@ -7,3 +7,8 @@ type ModelDetailRequest struct {
 type SetProxyListeningRequest struct {
 	Listening bool `json:"listening"`
 }
+
+type SetFilterListeningRequest struct {
+	ID      int  `json:"id" binding:"required"`
+	Enabled bool `json:"enabled"`
+}

@@ -98,14 +98,27 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 	}
 }
 
-func (m *Manager) DumpProxies() []*models.ProxyDescription {
-	result := make([]*models.ProxyDescription, 0, len(m.proxies))
+func (m *Manager) DumpProxies() []models.ProxyDescription {
+	result := make([]models.ProxyDescription, 0, len(m.proxies))
 	for i, p := range m.proxies {
-		desc := &models.ProxyDescription{
-			ID:                 i + 1,
+		proxyID := i + 1
+		filters := p.GetFilters()
+		descriptions := make([]models.FilterDescription, 0, len(filters))
+		for j, f := range filters {
+			desc := models.FilterDescription{
+				ID:      j + 1,
+				ProxyID: proxyID,
+				Rule:    f.GetRule().String(),
+				Verdict: f.GetVerdict().String(),
+				Enabled: f.IsEnabled(),
+			}
+			descriptions = append(descriptions, desc)
+		}
+		desc := models.ProxyDescription{
+			ID:                 proxyID,
 			Service:            p.GetConfig(),
 			Listening:          p.GetListening(),
-			FilterDescriptions: p.GetFilterDescriptions(),
+			FilterDescriptions: descriptions,
 		}
 		result = append(result, desc)
 	}
@@ -117,5 +130,16 @@ func (m *Manager) SetProxyListening(proxyID int, listening bool) error {
 		return ErrNoSuchProxy
 	}
 	m.proxies[proxyID-1].SetListening(listening)
+	return nil
+}
+
+func (m *Manager) SetFilterEnabled(proxyID, filterID int, enabled bool) error {
+	if proxyID < 1 || proxyID > len(m.proxies) {
+		return ErrNoSuchProxy
+	}
+	p := m.proxies[proxyID-1]
+	if err := p.SetFilterEnabled(filterID-1, enabled); err != nil {
+		return fmt.Errorf("setting filter enabled for proxy %v: %w", p, err)
+	}
 	return nil
 }

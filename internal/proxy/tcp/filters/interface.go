@@ -2,6 +2,7 @@ package filters
 
 import (
 	"fmt"
+	"go.uber.org/atomic"
 	"goxy/internal/common"
 	"strings"
 )
@@ -70,8 +71,26 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 type Filter struct {
 	Rule    Rule
 	Verdict common.Verdict
+
+	disabled atomic.Bool
 }
 
-func (f *Filter) String() string {
+func (f Filter) IsEnabled() bool {
+	return !f.disabled.Load()
+}
+
+func (f *Filter) SetEnabled(enabled bool) {
+	f.disabled.Store(!enabled)
+}
+
+func (f Filter) GetRule() common.Rule {
+	return f.Rule
+}
+
+func (f Filter) GetVerdict() common.Verdict {
+	return f.Verdict
+}
+
+func (f Filter) String() string {
 	return fmt.Sprintf("if %s: %s", f.Rule, f.Verdict)
 }

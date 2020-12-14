@@ -19,6 +19,7 @@ const BufSize = 64 * 1024
 var (
 	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
 	ErrDropped         = errors.New("connection dropped")
+	ErrInvalidFilter   = errors.New("no such filter")
 )
 
 func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
@@ -72,6 +73,14 @@ func (p *Proxy) SetListening(state bool) {
 	p.listening.Store(state)
 }
 
+func (p *Proxy) SetFilterEnabled(filter int, enabled bool) error {
+	if filter < 0 || filter >= len(p.filters) {
+		return ErrInvalidFilter
+	}
+	p.filters[filter].SetEnabled(enabled)
+	return nil
+}
+
 func (p *Proxy) Start() error {
 	p.SetListening(true)
 
@@ -113,6 +122,9 @@ func (p *Proxy) GetConfig() *common.ServiceConfig {
 
 func (p *Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) error {
 	for _, f := range p.filters {
+		if !f.IsEnabled() {
+			continue
+		}
 		res, err := f.Rule.Apply(pctx, buf, ingress)
 		if err != nil {
 			return fmt.Errorf("error in rule %T: %w", f.Rule, err)
@@ -133,10 +145,11 @@ func (p *Proxy) String() string {
 	return fmt.Sprintf("TCP proxy %s", p.ListenAddr)
 }
 
-func (p *Proxy) GetFilterDescriptions() []string {
-	result := make([]string, 0, len(p.filters))
+func (p *Proxy) GetFilters() []common.Filter {
+	result := make([]common.Filter, 0, len(p.filters))
 	for _, f := range p.filters {
-		result = append(result, f.String())
+		f := f
+		result = append(result, &f)
 	}
 	return result
 }
