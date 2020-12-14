@@ -1,5 +1,5 @@
 import Vue from 'vue'
-import { Button, Table, TableColumn, Container, Main, Switch, Header, Row } from 'element-ui'
+import { Button, Table, TableColumn, Container, Main, Switch, Header, Row, Tag } from 'element-ui'
 import lang from 'element-ui/lib/locale/lang/en'
 import locale from 'element-ui/lib/locale'
 
@@ -13,3 +13,4 @@ Vue.use(Main)
 Vue.use(Switch)
 Vue.use(Header)
 Vue.use(Row)
+Vue.use(Tag)
