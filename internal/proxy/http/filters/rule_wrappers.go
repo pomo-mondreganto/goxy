@@ -69,5 +69,5 @@ func (w *NotWrapper) Apply(ctx *common.ProxyContext, e wrapper.Entity) (bool, er
 }
 
 func (w *NotWrapper) String() string {
-	return fmt.Sprintf("not %s", w.rule)
+	return fmt.Sprintf("not (%s)", w.rule)
 }

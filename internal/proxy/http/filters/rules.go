@@ -65,7 +65,7 @@ func (r *ContainsRawRule) Apply(_ *common.ProxyContext, data interface{}) (bool,
 }
 
 func (r *ContainsRawRule) String() string {
-	return fmt.Sprintf("contains %s", r.value)
+	return fmt.Sprintf("contains '%s'", r.value)
 }
 
 type IContainsRawRule struct {
@@ -83,7 +83,7 @@ func (r *IContainsRawRule) Apply(_ *common.ProxyContext, data interface{}) (bool
 }
 
 func (r *IContainsRawRule) String() string {
-	return fmt.Sprintf("icontains %s", r.value)
+	return fmt.Sprintf("icontains '%s'", r.value)
 }
 
 type RegexRawRule struct {
@@ -101,7 +101,7 @@ func (r *RegexRawRule) Apply(_ *common.ProxyContext, data interface{}) (bool, er
 }
 
 func (r *RegexRawRule) String() string {
-	return fmt.Sprintf("regex %s", r.re)
+	return fmt.Sprintf("regex '%s'", r.re)
 }
 
 func processGenericMatchRule(sh func(string) bool, bh func([]byte) bool, data interface{}) (bool, error) {

@@ -135,7 +135,7 @@ func (w *FieldWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, 
 
 func (w *FieldWrapper) String() string {
 	fieldRepr := strings.Join(w.fieldChain, ".")
-	return fmt.Sprintf("field %s %s", fieldRepr, w.rule)
+	return fmt.Sprintf("field '%s' %s", fieldRepr, w.rule)
 }
 
 type RawNotWrapper struct {
@@ -151,7 +151,7 @@ func (w *RawNotWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool,
 }
 
 func (w *RawNotWrapper) String() string {
-	return fmt.Sprintf("not %s", w.rule)
+	return fmt.Sprintf("not (%s)", w.rule)
 }
 
 type RawRuleConverterWrapper struct {

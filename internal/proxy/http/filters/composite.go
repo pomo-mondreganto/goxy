@@ -58,7 +58,7 @@ func (r *CompositeAndRule) String() string {
 	for _, r := range r.rules {
 		ruleNames = append(ruleNames, r.String())
 	}
-	return fmt.Sprintf("(%s)", strings.Join(ruleNames, " and "))
+	return fmt.Sprintf("%s", strings.Join(ruleNames, " and "))
 }
 
 type CompositeNotRule struct {
@@ -74,5 +74,5 @@ func (r *CompositeNotRule) Apply(ctx *common.ProxyContext, e wrapper.Entity) (bo
 }
 
 func (r *CompositeNotRule) String() string {
-	return fmt.Sprintf("not %s", r.rule)
+	return fmt.Sprintf("not (%s)", r.rule)
 }
