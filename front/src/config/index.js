@@ -5,9 +5,7 @@ let backUrl = '';
 if (isDebug) {
     backUrl = 'http://127.0.0.1:8000/api';
 } else {
-    backUrl = window.location.origin + "/api";
+    backUrl = window.location.origin + '/api';
 }
 
-export {
-    backUrl
-}
+export { backUrl };
