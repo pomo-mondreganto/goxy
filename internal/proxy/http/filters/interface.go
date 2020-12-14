@@ -9,16 +9,23 @@ import (
 
 type Rule interface {
 	Apply(ctx *common.ProxyContext, e wrapper.Entity) (bool, error)
+	fmt.Stringer
 }
 
 type RawRule interface {
 	Apply(ctx *common.ProxyContext, data interface{}) (bool, error)
+	fmt.Stringer
+}
+
+type EntityConverter interface {
+	Convert(e wrapper.Entity) (interface{}, error)
+	fmt.Stringer
 }
 
 type RuleCreator func(rs RuleSet, cfg common.RuleConfig) (Rule, error)
 type RawRuleCreator func(cfg common.RuleConfig) (RawRule, error)
 
-type RuleWrapperCreator func(rule Rule, _ common.RuleConfig) Rule
+type RuleWrapperCreator func(rule Rule, cfg common.RuleConfig) Rule
 type RawRuleWrapperCreator func(rule RawRule, cfg common.RuleConfig) RawRule
 
 type RuleSet struct {
@@ -56,7 +63,7 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 
 			// Some block at the end of rules (can be empty) contains only raw rules.
 			// Rules before are regular rules, and between these two blocks we need to insert
-			// the RawRuleConverter.
+			// the RawRuleConverterWrapper.
 
 			// the last rule in chain must be either the composite rule or raw rule.
 			lastToken := tokens[len(tokens)-1]
@@ -115,4 +122,8 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 type Filter struct {
 	Rule    Rule
 	Verdict common.Verdict
+}
+
+func (f *Filter) String() string {
+	return fmt.Sprintf("if %s: %s", f.Rule, f.Verdict)
 }

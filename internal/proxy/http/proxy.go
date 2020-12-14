@@ -113,7 +113,11 @@ func (p *Proxy) String() string {
 }
 
 func (p *Proxy) GetFilterDescriptions() []string {
-	return nil
+	result := make([]string, 0, len(p.filters))
+	for _, f := range p.filters {
+		result = append(result, f.String())
+	}
+	return result
 }
 
 func (p *Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {

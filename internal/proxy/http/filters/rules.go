@@ -46,32 +46,44 @@ func (r *IngressRule) Apply(_ *common.ProxyContext, e wrapper.Entity) (bool, err
 	return e.GetIngress(), nil
 }
 
+func (r *IngressRule) String() string {
+	return "ingress"
+}
+
 type ContainsRawRule struct {
-	Value string
+	value string
 }
 
 func (r *ContainsRawRule) Apply(_ *common.ProxyContext, data interface{}) (bool, error) {
 	stringHandler := func(s string) bool {
-		return strings.Contains(s, r.Value)
+		return strings.Contains(s, r.value)
 	}
 	bytesHandler := func(b []byte) bool {
-		return bytes.Contains(b, []byte(r.Value))
+		return bytes.Contains(b, []byte(r.value))
 	}
 	return processGenericMatchRule(stringHandler, bytesHandler, data)
 }
 
+func (r *ContainsRawRule) String() string {
+	return fmt.Sprintf("contains %s", r.value)
+}
+
 type IContainsRawRule struct {
-	Value string
+	value string
 }
 
 func (r *IContainsRawRule) Apply(_ *common.ProxyContext, data interface{}) (bool, error) {
 	stringHandler := func(s string) bool {
-		return strings.Contains(strings.ToLower(s), r.Value)
+		return strings.Contains(strings.ToLower(s), r.value)
 	}
 	bytesHandler := func(b []byte) bool {
-		return bytes.Contains(bytes.ToLower(b), []byte(r.Value))
+		return bytes.Contains(bytes.ToLower(b), []byte(r.value))
 	}
 	return processGenericMatchRule(stringHandler, bytesHandler, data)
+}
+
+func (r *IContainsRawRule) String() string {
+	return fmt.Sprintf("icontains %s", r.value)
 }
 
 type RegexRawRule struct {
@@ -86,6 +98,10 @@ func (r *RegexRawRule) Apply(_ *common.ProxyContext, data interface{}) (bool, er
 		return r.re.Match(b)
 	}
 	return processGenericMatchRule(stringHandler, bytesHandler, data)
+}
+
+func (r *RegexRawRule) String() string {
+	return fmt.Sprintf("regex %s", r.re)
 }
 
 func processGenericMatchRule(sh func(string) bool, bh func([]byte) bool, data interface{}) (bool, error) {

@@ -4,19 +4,20 @@ import (
 	"fmt"
 	"goxy/internal/common"
 	"goxy/internal/proxy/http/wrapper"
+	"strings"
 )
 
 func NewCompositeAndRule(rs RuleSet, cfg common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) < 2 {
 		return nil, ErrInvalidRuleArgs
 	}
-	r := &CompositeAndRule{Rules: make([]Rule, 0, len(cfg.Args))}
+	r := &CompositeAndRule{rules: make([]Rule, 0, len(cfg.Args))}
 	for _, name := range cfg.Args {
 		rule, ok := rs.GetRule(name)
 		if !ok {
 			return nil, fmt.Errorf("invalid rule name: %s", name)
 		}
-		r.Rules = append(r.Rules, rule)
+		r.rules = append(r.rules, rule)
 	}
 	return r, nil
 }
@@ -32,15 +33,15 @@ func NewCompositeNotRule(rs RuleSet, cfg common.RuleConfig) (Rule, error) {
 		return nil, fmt.Errorf("invalid rule name: %s", name)
 	}
 
-	return &CompositeNotRule{Rule: rule}, nil
+	return &CompositeNotRule{rule: rule}, nil
 }
 
 type CompositeAndRule struct {
-	Rules []Rule
+	rules []Rule
 }
 
 func (r *CompositeAndRule) Apply(ctx *common.ProxyContext, e wrapper.Entity) (bool, error) {
-	for _, rule := range r.Rules {
+	for _, rule := range r.rules {
 		res, err := rule.Apply(ctx, e)
 		if err != nil {
 			return false, fmt.Errorf("error in rule %T: %w", rule, err)
@@ -52,14 +53,26 @@ func (r *CompositeAndRule) Apply(ctx *common.ProxyContext, e wrapper.Entity) (bo
 	return true, nil
 }
 
+func (r *CompositeAndRule) String() string {
+	ruleNames := make([]string, 0, len(r.rules))
+	for _, r := range r.rules {
+		ruleNames = append(ruleNames, r.String())
+	}
+	return fmt.Sprintf("(%s)", strings.Join(ruleNames, " and "))
+}
+
 type CompositeNotRule struct {
-	Rule Rule
+	rule Rule
 }
 
 func (r *CompositeNotRule) Apply(ctx *common.ProxyContext, e wrapper.Entity) (bool, error) {
-	res, err := r.Rule.Apply(ctx, e)
+	res, err := r.rule.Apply(ctx, e)
 	if err != nil {
-		return false, fmt.Errorf("error in rule %T: %w", r.Rule, err)
+		return false, fmt.Errorf("error in rule %T: %w", r.rule, err)
 	}
 	return !res, nil
+}
+
+func (r *CompositeNotRule) String() string {
+	return fmt.Sprintf("not %s", r.rule)
 }

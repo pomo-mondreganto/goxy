@@ -2,7 +2,9 @@ package filters
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"goxy/internal/common"
+	"goxy/internal/proxy/http/wrapper"
 	"strings"
 )
 
@@ -20,7 +22,11 @@ func NewFieldWrapper(r RawRule, cfg common.RuleConfig) RawRule {
 }
 
 func NewNotWrapperRaw(r RawRule, _ common.RuleConfig) RawRule {
-	return &NotWrapperRaw{r}
+	return &RawNotWrapper{r}
+}
+
+func NewRawRuleConverter(rule RawRule, ec EntityConverter) Rule {
+	return &RawRuleConverterWrapper{rule, ec}
 }
 
 type AnyWrapper struct {
@@ -69,6 +75,10 @@ func (w *AnyWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, er
 	return false, nil
 }
 
+func (w *AnyWrapper) String() string {
+	return fmt.Sprintf("any element %s", w.rule)
+}
+
 type ArrayWrapper struct {
 	rule RawRule
 }
@@ -90,6 +100,10 @@ func (w *ArrayWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, 
 	default:
 		return false, nil
 	}
+}
+
+func (w *ArrayWrapper) String() string {
+	return fmt.Sprintf("is array and %s", w.rule)
 }
 
 type FieldWrapper struct {
@@ -119,14 +133,45 @@ func (w *FieldWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, 
 	return res, nil
 }
 
-type NotWrapperRaw struct {
+func (w *FieldWrapper) String() string {
+	fieldRepr := strings.Join(w.fieldChain, ".")
+	return fmt.Sprintf("field %s %s", fieldRepr, w.rule)
+}
+
+type RawNotWrapper struct {
 	rule RawRule
 }
 
-func (w *NotWrapperRaw) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
+func (w *RawNotWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
 	res, err := w.rule.Apply(ctx, data)
 	if err != nil {
 		return false, fmt.Errorf("error in rule %T: %w", w.rule, err)
 	}
 	return !res, nil
+}
+
+func (w *RawNotWrapper) String() string {
+	return fmt.Sprintf("not %s", w.rule)
+}
+
+type RawRuleConverterWrapper struct {
+	rule RawRule
+	ec   EntityConverter
+}
+
+func (w *RawRuleConverterWrapper) Apply(ctx *common.ProxyContext, e wrapper.Entity) (bool, error) {
+	data, err := w.ec.Convert(e)
+	if err != nil {
+		logrus.Debugf("Entity converter returned an error: %v", err)
+		return false, nil
+	}
+	res, err := w.rule.Apply(ctx, data)
+	if err != nil {
+		return false, fmt.Errorf("error in rule %T: %w", w.rule, err)
+	}
+	return res, nil
+}
+
+func (w *RawRuleConverterWrapper) String() string {
+	return fmt.Sprintf("%s %s", w.ec, w.rule)
 }
