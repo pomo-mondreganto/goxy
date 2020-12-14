@@ -79,7 +79,7 @@ func (r *RegexRule) Apply(_ *common.ProxyContext, buf []byte, _ bool) (bool, err
 }
 
 func (r *RegexRule) String() string {
-	return fmt.Sprintf("regex %s", r.regex)
+	return fmt.Sprintf("regex '%s'", r.regex)
 }
 
 type ContainsRule struct {
@@ -91,7 +91,7 @@ func (r *ContainsRule) Apply(_ *common.ProxyContext, buf []byte, _ bool) (bool, 
 }
 
 func (r *ContainsRule) String() string {
-	return fmt.Sprintf("contains %s", string(r.value))
+	return fmt.Sprintf("contains '%s'", string(r.value))
 }
 
 type IContainsRule struct {
@@ -103,7 +103,7 @@ func (r *IContainsRule) Apply(_ *common.ProxyContext, buf []byte, _ bool) (bool,
 }
 
 func (r *IContainsRule) String() string {
-	return fmt.Sprintf("icontains %s", string(r.value))
+	return fmt.Sprintf("icontains '%s'", string(r.value))
 }
 
 type CounterGTRule struct {
@@ -116,5 +116,5 @@ func (r *CounterGTRule) Apply(ctx *common.ProxyContext, _ []byte, _ bool) (bool,
 }
 
 func (r *CounterGTRule) String() string {
-	return fmt.Sprintf("counter %s > %d", r.key, r.value)
+	return fmt.Sprintf("counter '%s' > %d", r.key, r.value)
 }

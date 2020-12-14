@@ -76,7 +76,7 @@ func (w *AnyWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, er
 }
 
 func (w *AnyWrapper) String() string {
-	return fmt.Sprintf("any element %s", w.rule)
+	return fmt.Sprintf("any %s", w.rule)
 }
 
 type ArrayWrapper struct {

@@ -73,5 +73,5 @@ func (r *CompositeNotRule) Apply(ctx *common.ProxyContext, buf []byte, ingress b
 }
 
 func (r *CompositeNotRule) String() string {
-	return fmt.Sprintf("not %s", r.rule)
+	return fmt.Sprintf("not (%s)", r.rule)
 }

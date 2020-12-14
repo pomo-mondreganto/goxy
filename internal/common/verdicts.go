@@ -59,7 +59,7 @@ func (v *VerdictSetFlag) Mutate(ctx *ProxyContext) error {
 }
 
 func (v *VerdictSetFlag) String() string {
-	return fmt.Sprintf("set %s", v.Key)
+	return fmt.Sprintf("set '%s'", v.Key)
 }
 
 type VerdictIncrement struct {
@@ -72,7 +72,7 @@ func (v *VerdictIncrement) Mutate(ctx *ProxyContext) error {
 }
 
 func (v *VerdictIncrement) String() string {
-	return fmt.Sprintf("inc %s", v.Key)
+	return fmt.Sprintf("inc '%s'", v.Key)
 }
 
 type VerdictDecrement struct {
@@ -85,7 +85,7 @@ func (v *VerdictDecrement) Mutate(ctx *ProxyContext) error {
 }
 
 func (v *VerdictDecrement) String() string {
-	return fmt.Sprintf("dec %s", v.Key)
+	return fmt.Sprintf("dec '%s'", v.Key)
 }
 
 type VerdictAlert struct {
