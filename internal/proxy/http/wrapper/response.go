@@ -3,15 +3,16 @@ package wrapper
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 )
 
+// Response is a wrapper around http.Response implementing Entity interface.
+// It's expected that Response.Body is already wrapped with BodyReader.
 type Response struct {
 	Response *http.Response
-
-	bodyCache []byte
 }
 
 func (r *Response) GetForm() (map[string][]string, error) {
@@ -20,12 +21,10 @@ func (r *Response) GetForm() (map[string][]string, error) {
 }
 
 func (r *Response) GetJSON() (interface{}, error) {
-	data, err := r.GetBody()
-	if err != nil {
-		return nil, fmt.Errorf("getting body: %w", err)
-	}
+	defer r.resetBody()
+	dec := json.NewDecoder(r.Response.Body)
 	result := new(interface{})
-	if err := json.Unmarshal(data, result); err != nil {
+	if err := dec.Decode(result); err != nil {
 		return nil, fmt.Errorf("parsing json: %w", err)
 	}
 	return *result, nil
@@ -36,14 +35,12 @@ func (r *Response) GetIngress() bool {
 }
 
 func (r *Response) GetBody() ([]byte, error) {
-	if r.bodyCache == nil {
-		var err error
-		r.bodyCache, err = ioutil.ReadAll(r.Response.Body)
-		if err != nil {
-			return nil, fmt.Errorf("reading body: err")
-		}
+	defer r.resetBody()
+	buf, err := ioutil.ReadAll(r.Response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading body: %w", err)
 	}
-	return r.bodyCache, nil
+	return buf, nil
 }
 
 func (r *Response) GetCookies() []*http.Cookie {
@@ -59,4 +56,10 @@ func (r *Response) GetURL() *url.URL {
 		return r.Response.Request.URL
 	}
 	return nil
+}
+
+func (r *Response) resetBody() {
+	if err := r.Response.Body.Close(); err != nil {
+		logrus.Errorf("Error resetting response body: %v", err)
+	}
 }

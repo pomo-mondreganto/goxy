@@ -24,6 +24,11 @@ rules:
     args:
       - "admi"
 
+  - name: http_body_contains_pt
+    type: http::ingress::body::contains
+    args:
+      - "../"
+
   - name: curl_request
     type: http::headers::any::icontains
     field: "User-Agent"
@@ -61,10 +66,14 @@ services:
     filters:
       - rule: ingress
         verdict: "alert::ingress"
+      - rule: http_body_contains_pt
+        verdict: "alert::path traversal in body"
       - rule: http_form_username_contains_admin
         verdict: "alert::admin in form username"
       - rule: curl_request
         verdict: "alert::curl request"
+      - rule: requests
+        verdict: "alert::requests"
       - rule: not_requests_2184
         verdict: "alert::not requests 2.18.4"
 

@@ -98,7 +98,7 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 						rawRule = nil
 						continue
 					} else {
-						return nil, fmt.Errorf("no entity converter with name %s", ruleName)
+						return nil, fmt.Errorf("no entity converter with name %s for rule %s", ruleName, rc.Type)
 					}
 				}
 
