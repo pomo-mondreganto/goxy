@@ -13,12 +13,15 @@ type Connection struct {
 	Logger  *logrus.Entry
 }
 
-func (c *Connection) Close() error {
-	if err := c.Local.Close(); err != nil && !isConnectionClosedErr(err) {
-		return err
-	}
-	if err := c.Remote.Close(); err != nil && !isConnectionClosedErr(err) {
-		return err
+func (c *Connection) CloseCounterpart(ingress bool) error {
+	if ingress {
+		if err := c.Local.Close(); err != nil && !isConnectionClosedErr(err) {
+			return err
+		}
+	} else {
+		if err := c.Remote.Close(); err != nil && !isConnectionClosedErr(err) {
+			return err
+		}
 	}
 	return nil
 }

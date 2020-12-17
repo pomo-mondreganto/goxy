@@ -25,6 +25,7 @@ var (
 func main() {
 	flag.Parse()
 
+	initLogger()
 	setLogLevel()
 	setWebServerMode()
 	setConfigDefaults()
@@ -47,6 +48,14 @@ func main() {
 	shutdownProxyManager(m, ctx)
 
 	logrus.Info("Shutdown successful")
+}
+
+func initLogger() {
+	mainFormatter := &logrus.TextFormatter{}
+	mainFormatter.FullTimestamp = true
+	mainFormatter.ForceColors = true
+	mainFormatter.TimestampFormat = "15:04:05"
+	logrus.SetFormatter(mainFormatter)
 }
 
 func setLogLevel() {
