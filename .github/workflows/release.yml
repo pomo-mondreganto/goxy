@@ -1,7 +1,7 @@
 name: main
 on: push
 jobs:
-  tests:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -13,16 +13,13 @@ jobs:
       - name: Run tests
         run: go test -race ./...
 
-      - name: Install front deps
-        working-directory: front
-        uses: borales/actions-yarn@v2.0.0
+      - name: Set up Node 13
+        uses: actions/setup-node@v2
         with:
-          cmd: install
+          node-version: '13'
       - name: Build front
-        uses: borales/actions-yarn@v2.0.0
         working-directory: front
-        with:
-          cmd: build
+        run: yarn install && yarn build
 
       - name: Release placeholder
         run: ls front/dist
