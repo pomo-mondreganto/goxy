@@ -48,6 +48,7 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
 		serviceConfig: cfg,
 		logger:        logger,
 		filters:       fts,
+		wg:            new(sync.WaitGroup),
 	}
 	return p, nil
 }
@@ -59,13 +60,13 @@ type Proxy struct {
 	serviceConfig common.ServiceConfig
 	closing       bool
 	listening     atomic.Bool
-	wg            sync.WaitGroup
+	wg            *sync.WaitGroup
 	listener      net.Listener
 	logger        *logrus.Entry
 	filters       []filters.Filter
 }
 
-func (p *Proxy) GetListening() bool {
+func (p Proxy) GetListening() bool {
 	return p.listening.Load()
 }
 
@@ -116,11 +117,11 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (p *Proxy) GetConfig() *common.ServiceConfig {
+func (p Proxy) GetConfig() *common.ServiceConfig {
 	return &p.serviceConfig
 }
 
-func (p *Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) error {
+func (p Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) error {
 	for _, f := range p.filters {
 		if !f.IsEnabled() {
 			continue
@@ -141,11 +142,11 @@ func (p *Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) 
 	return nil
 }
 
-func (p *Proxy) String() string {
+func (p Proxy) String() string {
 	return fmt.Sprintf("TCP proxy %s", p.ListenAddr)
 }
 
-func (p *Proxy) GetFilters() []common.Filter {
+func (p Proxy) GetFilters() []common.Filter {
 	result := make([]common.Filter, 0, len(p.filters))
 	for _, f := range p.filters {
 		f := f
@@ -154,7 +155,7 @@ func (p *Proxy) GetFilters() []common.Filter {
 	return result
 }
 
-func (p *Proxy) oneSideHandler(conn *Connection, ingress bool) error {
+func (p Proxy) oneSideHandler(conn *Connection, ingress bool) error {
 	logger := p.logger.WithField("ingress", ingress)
 
 	var (
@@ -205,7 +206,7 @@ func (p *Proxy) oneSideHandler(conn *Connection, ingress bool) error {
 	return nil
 }
 
-func (p *Proxy) handleConnection(conn net.Conn) {
+func (p Proxy) handleConnection(conn net.Conn) {
 	defer p.wg.Done()
 	defer func() {
 		if err := conn.Close(); err != nil && !isConnectionClosedErr(err) {

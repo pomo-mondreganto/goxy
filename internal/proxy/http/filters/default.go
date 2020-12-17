@@ -17,13 +17,13 @@ var DefaultRuleCreators = map[string]RuleCreator{
 }
 
 var DefaultEntityConverters = map[string]EntityConverter{
-	"json":    &JsonEntityConverter{},
-	"cookies": &CookiesEntityConverter{},
-	"query":   &QueryEntityConverter{},
-	"body":    &BodyEntityConverter{},
-	"path":    &PathEntityConverter{},
-	"form":    &FormEntityConverter{},
-	"headers": &HeadersEntityConverter{},
+	"json":    JsonEntityConverter{},
+	"cookies": CookiesEntityConverter{},
+	"query":   QueryEntityConverter{},
+	"body":    BodyEntityConverter{},
+	"path":    PathEntityConverter{},
+	"form":    FormEntityConverter{},
+	"headers": HeadersEntityConverter{},
 }
 
 var DefaultRawRuleCreators = map[string]RawRuleCreator{

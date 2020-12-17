@@ -9,31 +9,31 @@ import (
 )
 
 func NewAnyWrapper(r RawRule, _ common.RuleConfig) RawRule {
-	return &AnyWrapper{r}
+	return AnyWrapper{r}
 }
 
 func NewArrayWrapper(r RawRule, _ common.RuleConfig) RawRule {
-	return &ArrayWrapper{r}
+	return ArrayWrapper{r}
 }
 
 func NewFieldWrapper(r RawRule, cfg common.RuleConfig) RawRule {
 	fieldChain := strings.Split(cfg.Field, ".")
-	return &FieldWrapper{r, fieldChain}
+	return FieldWrapper{r, fieldChain}
 }
 
 func NewNotWrapperRaw(r RawRule, _ common.RuleConfig) RawRule {
-	return &RawNotWrapper{r}
+	return RawNotWrapper{r}
 }
 
 func NewRawRuleConverter(rule RawRule, ec EntityConverter) Rule {
-	return &RawRuleConverterWrapper{rule, ec}
+	return RawRuleConverterWrapper{rule, ec}
 }
 
 type AnyWrapper struct {
 	rule RawRule
 }
 
-func (w *AnyWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
+func (w AnyWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
 	switch data.(type) {
 	case map[string]interface{}:
 		for _, v := range data.(map[string]interface{}) {
@@ -75,7 +75,7 @@ func (w *AnyWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, er
 	return false, nil
 }
 
-func (w *AnyWrapper) String() string {
+func (w AnyWrapper) String() string {
 	return fmt.Sprintf("any %s", w.rule)
 }
 
@@ -83,7 +83,7 @@ type ArrayWrapper struct {
 	rule RawRule
 }
 
-func (w *ArrayWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
+func (w ArrayWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
 	switch data.(type) {
 	case []interface{}:
 		res, err := w.rule.Apply(ctx, data.([]interface{}))
@@ -102,7 +102,7 @@ func (w *ArrayWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, 
 	}
 }
 
-func (w *ArrayWrapper) String() string {
+func (w ArrayWrapper) String() string {
 	return fmt.Sprintf("is array and %s", w.rule)
 }
 
@@ -111,7 +111,7 @@ type FieldWrapper struct {
 	fieldChain []string
 }
 
-func (w *FieldWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
+func (w FieldWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
 	result := data
 	for _, f := range w.fieldChain {
 		switch result.(type) {
@@ -133,7 +133,7 @@ func (w *FieldWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, 
 	return res, nil
 }
 
-func (w *FieldWrapper) String() string {
+func (w FieldWrapper) String() string {
 	fieldRepr := strings.Join(w.fieldChain, ".")
 	return fmt.Sprintf("field '%s' %s", fieldRepr, w.rule)
 }
@@ -142,7 +142,7 @@ type RawNotWrapper struct {
 	rule RawRule
 }
 
-func (w *RawNotWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
+func (w RawNotWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool, error) {
 	res, err := w.rule.Apply(ctx, data)
 	if err != nil {
 		return false, fmt.Errorf("error in rule %T: %w", w.rule, err)
@@ -150,7 +150,7 @@ func (w *RawNotWrapper) Apply(ctx *common.ProxyContext, data interface{}) (bool,
 	return !res, nil
 }
 
-func (w *RawNotWrapper) String() string {
+func (w RawNotWrapper) String() string {
 	return fmt.Sprintf("not (%s)", w.rule)
 }
 
@@ -159,7 +159,7 @@ type RawRuleConverterWrapper struct {
 	ec   EntityConverter
 }
 
-func (w *RawRuleConverterWrapper) Apply(ctx *common.ProxyContext, e wrapper.Entity) (bool, error) {
+func (w RawRuleConverterWrapper) Apply(ctx *common.ProxyContext, e wrapper.Entity) (bool, error) {
 	data, err := w.ec.Convert(e)
 	if err != nil {
 		logrus.Debugf("Entity converter returned an error: %v", err)
@@ -172,6 +172,6 @@ func (w *RawRuleConverterWrapper) Apply(ctx *common.ProxyContext, e wrapper.Enti
 	return res, nil
 }
 
-func (w *RawRuleConverterWrapper) String() string {
+func (w RawRuleConverterWrapper) String() string {
 	return fmt.Sprintf("%s %s", w.ec, w.rule)
 }

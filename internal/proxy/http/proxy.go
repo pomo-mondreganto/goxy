@@ -47,6 +47,7 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
 		serviceConfig: cfg,
 		logger:        logger,
 		filters:       fts,
+		wg:            new(sync.WaitGroup),
 	}
 	return p, nil
 }
@@ -60,12 +61,12 @@ type Proxy struct {
 	listening     atomic.Bool
 	server        *http.Server
 	client        *http.Client
-	wg            sync.WaitGroup
+	wg            *sync.WaitGroup
 	logger        *logrus.Entry
 	filters       []filters.Filter
 }
 
-func (p *Proxy) GetListening() bool {
+func (p Proxy) GetListening() bool {
 	return p.listening.Load()
 }
 
@@ -111,15 +112,15 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (p *Proxy) GetConfig() *common.ServiceConfig {
+func (p Proxy) GetConfig() *common.ServiceConfig {
 	return &p.serviceConfig
 }
 
-func (p *Proxy) String() string {
+func (p Proxy) String() string {
 	return fmt.Sprintf("HTTP proxy %s", p.ListenAddr)
 }
 
-func (p *Proxy) GetFilters() []common.Filter {
+func (p Proxy) GetFilters() []common.Filter {
 	result := make([]common.Filter, 0, len(p.filters))
 	for _, f := range p.filters {
 		f := f
@@ -128,7 +129,7 @@ func (p *Proxy) GetFilters() []common.Filter {
 	return result
 }
 
-func (p *Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
+func (p Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
 	for _, f := range p.filters {
 		if !f.IsEnabled() {
 			continue
@@ -149,7 +150,7 @@ func (p *Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
 	return nil
 }
 
-func (p *Proxy) getHandler() http.HandlerFunc {
+func (p Proxy) getHandler() http.HandlerFunc {
 	handleError := func(w http.ResponseWriter) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}

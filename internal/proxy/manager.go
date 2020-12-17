@@ -98,7 +98,7 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 	}
 }
 
-func (m *Manager) DumpProxies() []models.ProxyDescription {
+func (m Manager) DumpProxies() []models.ProxyDescription {
 	result := make([]models.ProxyDescription, 0, len(m.proxies))
 	for i, p := range m.proxies {
 		proxyID := i + 1

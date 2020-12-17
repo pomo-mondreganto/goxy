@@ -5,20 +5,20 @@ import (
 	"net/http"
 )
 
-func (s *Server) statusHandler() gin.HandlerFunc {
+func (s Server) statusHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	}
 }
 
-func (s *Server) proxyListingHandler() gin.HandlerFunc {
+func (s Server) proxyListingHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		proxies := s.ProxyManager.DumpProxies()
 		c.JSON(http.StatusOK, gin.H{"proxies": proxies})
 	}
 }
 
-func (s *Server) setProxyListening() gin.HandlerFunc {
+func (s Server) setProxyListening() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idReq := new(ModelDetailRequest)
 		if err := c.ShouldBindUri(idReq); err != nil {
@@ -41,7 +41,7 @@ func (s *Server) setProxyListening() gin.HandlerFunc {
 	}
 }
 
-func (s *Server) setFilterEnabled() gin.HandlerFunc {
+func (s Server) setFilterEnabled() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idReq := new(ModelDetailRequest)
 		if err := c.ShouldBindUri(idReq); err != nil {

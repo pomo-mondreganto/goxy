@@ -15,12 +15,12 @@ type Response struct {
 	Response *http.Response
 }
 
-func (r *Response) GetForm() (map[string][]string, error) {
+func (r Response) GetForm() (map[string][]string, error) {
 	// Response cannot contain a form.
 	return nil, nil
 }
 
-func (r *Response) GetJSON() (interface{}, error) {
+func (r Response) GetJSON() (interface{}, error) {
 	defer r.resetBody()
 	dec := json.NewDecoder(r.Response.Body)
 	result := new(interface{})
@@ -30,11 +30,11 @@ func (r *Response) GetJSON() (interface{}, error) {
 	return *result, nil
 }
 
-func (r *Response) GetIngress() bool {
+func (r Response) GetIngress() bool {
 	return false
 }
 
-func (r *Response) GetBody() ([]byte, error) {
+func (r Response) GetBody() ([]byte, error) {
 	defer r.resetBody()
 	buf, err := ioutil.ReadAll(r.Response.Body)
 	if err != nil {
@@ -43,22 +43,22 @@ func (r *Response) GetBody() ([]byte, error) {
 	return buf, nil
 }
 
-func (r *Response) GetCookies() []*http.Cookie {
+func (r Response) GetCookies() []*http.Cookie {
 	return r.Response.Cookies()
 }
 
-func (r *Response) GetHeaders() map[string][]string {
+func (r Response) GetHeaders() map[string][]string {
 	return r.Response.Header
 }
 
-func (r *Response) GetURL() *url.URL {
+func (r Response) GetURL() *url.URL {
 	if r.Response.Request != nil {
 		return r.Response.Request.URL
 	}
 	return nil
 }
 
-func (r *Response) resetBody() {
+func (r Response) resetBody() {
 	if err := r.Response.Body.Close(); err != nil {
 		logrus.Errorf("Error resetting response body: %v", err)
 	}

@@ -19,7 +19,7 @@ func TestParseVerdict(t *testing.T) {
 		{
 			"alert",
 			args{"alert::some message"},
-			&VerdictAlert{
+			VerdictAlert{
 				logrus.WithField("reason", "some message"),
 			},
 			false,
@@ -27,37 +27,37 @@ func TestParseVerdict(t *testing.T) {
 		{
 			"increment",
 			args{"inc::test"},
-			&VerdictIncrement{Key: "test"},
+			VerdictIncrement{Key: "test"},
 			false,
 		},
 		{
 			"increment with space",
 			args{"inc::test something"},
-			&VerdictIncrement{Key: "test something"},
+			VerdictIncrement{Key: "test something"},
 			false,
 		},
 		{
 			"decrement",
 			args{"dec::test"},
-			&VerdictDecrement{Key: "test"},
+			VerdictDecrement{Key: "test"},
 			false,
 		},
 		{
 			"decrement with space",
 			args{"dec::test something"},
-			&VerdictDecrement{Key: "test something"},
+			VerdictDecrement{Key: "test something"},
 			false,
 		},
 		{
 			"accept",
 			args{"accept"},
-			&VerdictSetFlag{Key: AcceptFlag},
+			VerdictSetFlag{Key: AcceptFlag},
 			false,
 		},
 		{
 			"drop",
 			args{"drop"},
-			&VerdictSetFlag{Key: DropFlag},
+			VerdictSetFlag{Key: DropFlag},
 			false,
 		},
 	}

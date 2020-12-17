@@ -15,7 +15,7 @@ type Request struct {
 	Request *http.Request
 }
 
-func (r *Request) GetForm() (map[string][]string, error) {
+func (r Request) GetForm() (map[string][]string, error) {
 	defer r.resetBody()
 	if err := r.Request.ParseForm(); err != nil {
 		return nil, fmt.Errorf("parsing form: %w", err)
@@ -23,7 +23,7 @@ func (r *Request) GetForm() (map[string][]string, error) {
 	return r.Request.Form, nil
 }
 
-func (r *Request) GetJSON() (interface{}, error) {
+func (r Request) GetJSON() (interface{}, error) {
 	defer r.resetBody()
 	dec := json.NewDecoder(r.Request.Body)
 	result := new(interface{})
@@ -33,7 +33,7 @@ func (r *Request) GetJSON() (interface{}, error) {
 	return *result, nil
 }
 
-func (r *Request) GetBody() ([]byte, error) {
+func (r Request) GetBody() ([]byte, error) {
 	defer r.resetBody()
 	buf, err := ioutil.ReadAll(r.Request.Body)
 	if err != nil {
@@ -42,23 +42,23 @@ func (r *Request) GetBody() ([]byte, error) {
 	return buf, nil
 }
 
-func (r *Request) GetIngress() bool {
+func (r Request) GetIngress() bool {
 	return true
 }
 
-func (r *Request) GetCookies() []*http.Cookie {
+func (r Request) GetCookies() []*http.Cookie {
 	return r.Request.Cookies()
 }
 
-func (r *Request) GetHeaders() map[string][]string {
+func (r Request) GetHeaders() map[string][]string {
 	return r.Request.Header
 }
 
-func (r *Request) GetURL() *url.URL {
+func (r Request) GetURL() *url.URL {
 	return r.Request.URL
 }
 
-func (r *Request) resetBody() {
+func (r Request) resetBody() {
 	if err := r.Request.Body.Close(); err != nil {
 		logrus.Errorf("Error resetting request body: %v", err)
 	}

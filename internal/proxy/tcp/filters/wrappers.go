@@ -21,7 +21,7 @@ type IngressWrapper struct {
 	rule Rule
 }
 
-func (w *IngressWrapper) Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error) {
+func (w IngressWrapper) Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error) {
 	if !ingress {
 		return false, nil
 	}
@@ -32,7 +32,7 @@ func (w *IngressWrapper) Apply(ctx *common.ProxyContext, buf []byte, ingress boo
 	return res, nil
 }
 
-func (w *IngressWrapper) String() string {
+func (w IngressWrapper) String() string {
 	return fmt.Sprintf("ingress and %s", w.rule)
 }
 
@@ -40,7 +40,7 @@ type EgressWrapper struct {
 	rule Rule
 }
 
-func (w *EgressWrapper) Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error) {
+func (w EgressWrapper) Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error) {
 	if ingress {
 		return false, nil
 	}
@@ -51,7 +51,7 @@ func (w *EgressWrapper) Apply(ctx *common.ProxyContext, buf []byte, ingress bool
 	return res, nil
 }
 
-func (w *EgressWrapper) String() string {
+func (w EgressWrapper) String() string {
 	return fmt.Sprintf("egress and %s", w.rule)
 }
 
@@ -59,7 +59,7 @@ type NotWrapper struct {
 	rule Rule
 }
 
-func (w *NotWrapper) Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error) {
+func (w NotWrapper) Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error) {
 	res, err := w.rule.Apply(ctx, buf, ingress)
 	if err != nil {
 		return false, fmt.Errorf("error in rule %T: %w", w.rule, err)
@@ -67,6 +67,6 @@ func (w *NotWrapper) Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (
 	return !res, nil
 }
 
-func (w *NotWrapper) String() string {
+func (w NotWrapper) String() string {
 	return fmt.Sprintf("not (%s)", w.rule)
 }

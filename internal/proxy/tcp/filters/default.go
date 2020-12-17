@@ -1,8 +1,8 @@
 package filters
 
 var DefaultRules = map[string]Rule{
-	"ingress": new(IngressRule),
-	"egress":  &CompositeNotRule{new(IngressRule)},
+	"ingress": IngressRule{},
+	"egress":  CompositeNotRule{IngressRule{}},
 }
 
 var DefaultRuleWrappers = map[string]RuleWrapperCreator{

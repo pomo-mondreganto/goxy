@@ -13,14 +13,15 @@ import (
 )
 
 func NewServer(pm *proxy.Manager) *Server {
+	ad := BasicAuthData{
+		Username: viper.GetString("web.username"),
+		Password: viper.GetString("web.password"),
+	}
 	ms := &Server{
 		ProxyManager: pm,
 		Router:       gin.New(),
 		StaticDir:    viper.GetString("web.static_dir"),
-		AuthData: &BasicAuthData{
-			Username: viper.GetString("web.username"),
-			Password: viper.GetString("web.password"),
-		},
+		AuthData:     ad,
 	}
 	ms.registerMiddleware()
 	ms.registerRoutes()
@@ -36,7 +37,7 @@ type Server struct {
 	ProxyManager *proxy.Manager
 	Router       *gin.Engine
 	StaticDir    string
-	AuthData     *BasicAuthData
+	AuthData     BasicAuthData
 }
 
 func (s *Server) registerRoutes() {
