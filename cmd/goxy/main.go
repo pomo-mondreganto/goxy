@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"flag"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"goxy/internal/common"
 	"goxy/internal/proxy"
@@ -17,12 +17,12 @@ import (
 )
 
 var (
-	configFile = flag.String("config", "config.yml", "Path to the config file in YAML format")
-	verbose    = flag.Bool("log_level", false, "Verbose logging & web server debug")
+	configFile = pflag.StringP("config", "c", "config.yml", "Path to the config file in YAML format")
+	verbose    = pflag.BoolP("verbose", "v", false, "Verbose logging & web server debug")
 )
 
 func main() {
-	flag.Parse()
+	pflag.Parse()
 
 	initLogger()
 	setLogLevel()
