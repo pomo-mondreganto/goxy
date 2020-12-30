@@ -12,14 +12,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 )
 
 var (
 	configFile = flag.String("config", "config.yml", "Path to the config file in YAML format")
-	logLevel   = flag.String("log_level", "INFO", "Log level {INFO|DEBUG|WARNING|ERROR}")
+	verbose    = flag.Bool("log_level", false, "Verbose logging & web server debug")
 )
 
 func main() {
@@ -51,33 +50,23 @@ func main() {
 }
 
 func initLogger() {
-	mainFormatter := &logrus.TextFormatter{}
-	mainFormatter.FullTimestamp = true
-	mainFormatter.ForceColors = true
-	mainFormatter.TimestampFormat = "15:04:05"
-	logrus.SetFormatter(mainFormatter)
+	tf := &logrus.TextFormatter{}
+	tf.FullTimestamp = true
+	tf.ForceColors = true
+	tf.TimestampFormat = "15:04:05"
+	logrus.SetFormatter(tf)
 }
 
 func setLogLevel() {
-	switch strings.ToUpper(*logLevel) {
-	case "DEBUG":
+	if *verbose {
 		logrus.SetLevel(logrus.DebugLevel)
-	case "INFO":
+	} else {
 		logrus.SetLevel(logrus.InfoLevel)
-	case "WARNING":
-		logrus.SetLevel(logrus.WarnLevel)
-	case "ERROR":
-		logrus.SetLevel(logrus.ErrorLevel)
-	default:
-		logrus.Errorf("Invalid log level provided: %s", *logLevel)
-		flag.PrintDefaults()
-		os.Exit(1)
 	}
 }
 
 func setWebServerMode() {
-	level := logrus.StandardLogger().GetLevel()
-	if level == logrus.DebugLevel {
+	if *verbose {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
