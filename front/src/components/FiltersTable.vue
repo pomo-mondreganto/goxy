@@ -26,13 +26,18 @@
             <template v-slot="scope">
                 <el-switch
                     v-model="scope.row.enabled"
-                    @change="
-                        toggleFilter(
-                            scope.row.proxy_id,
-                            scope.row.id,
-                            scope.row.enabled
-                        )
-                    "
+                    @change="updateState(scope.row)"
+                    active-color="#13ce66"
+                    inactive-color="#ff4949"
+                >
+                </el-switch>
+            </template>
+        </el-table-column>
+        <el-table-column align="center" width="100" label="Alert">
+            <template v-slot="scope">
+                <el-switch
+                    v-model="scope.row.alert"
+                    @change="updateState(scope.row)"
                     active-color="#13ce66"
                     inactive-color="#ff4949"
                 >
@@ -48,12 +53,15 @@ export default {
         filters: Array,
     },
     methods: {
-        async toggleFilter(proxyId, filterId, enabled) {
+        async updateState(filter) {
             try {
-                await this.$http.put(`/proxies/${proxyId}/filter_enabled/`, {
-                    id: filterId,
-                    enabled: enabled,
-                });
+                await this.$http.put(
+                    `/proxies/${filter.proxy_id}/filters/${filter.id}/`,
+                    {
+                        enabled: filter.enabled,
+                        alert: filter.alert,
+                    }
+                );
                 this.$emit('reload');
             } catch {
                 console.error('error!');
