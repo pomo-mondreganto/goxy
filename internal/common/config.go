@@ -11,6 +11,7 @@ type RuleConfig struct {
 
 type FilterConfig struct {
 	Rule    string `json:"rule" mapstructure:"rule"`
+	Alert   bool   `json:"alert" mapstructure:"alert"`
 	Verdict string `json:"verdict" mapstructure:"verdict"`
 }
 

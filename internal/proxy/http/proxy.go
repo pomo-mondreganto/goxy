@@ -36,6 +36,7 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
 			Rule:    rule,
 			Verdict: verdict,
 		}
+		filter.SetAlert(f.Alert)
 		fts = append(fts, filter)
 	}
 
@@ -74,11 +75,12 @@ func (p *Proxy) SetListening(state bool) {
 	p.listening.Store(state)
 }
 
-func (p *Proxy) SetFilterEnabled(filter int, enabled bool) error {
+func (p *Proxy) SetFilterState(filter int, enabled, alert bool) error {
 	if filter < 0 || filter >= len(p.filters) {
 		return ErrInvalidFilter
 	}
 	p.filters[filter].SetEnabled(enabled)
+	p.filters[filter].SetAlert(alert)
 	return nil
 }
 
@@ -139,6 +141,9 @@ func (p Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
 			return fmt.Errorf("error in rule %T: %w", f.Rule, err)
 		}
 		if res {
+			if f.GetAlert() {
+				p.logger.Warningf("Rule %v triggered", f.Rule)
+			}
 			if err := f.Verdict.Mutate(pctx); err != nil {
 				return fmt.Errorf("error mutating verdict %T: %w", f.Verdict, err)
 			}

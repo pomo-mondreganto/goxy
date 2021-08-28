@@ -58,6 +58,9 @@ services:
         verdict: inc::keks
       - rule: egress
         verdict: "alert::show keks"
+      - rule: contains_attack
+        alert: true
+        verdict: drop
 
   - name: test http
     type: http
@@ -68,7 +71,8 @@ services:
       - rule: ingress
         verdict: "alert::ingress"
       - rule: http_body_contains_pt
-        verdict: "alert::path traversal in body"
+        alert: true
+        verdict: "drop"
       - rule: http_form_username_contains_admin
         verdict: "alert::admin in form username"
       - rule: curl_request

@@ -46,7 +46,7 @@ func (s *Server) registerRoutes() {
 		api.GET("/status/", s.statusHandler())
 		api.GET("/proxies/", s.proxyListingHandler())
 		api.PUT("/proxies/:id/listening/", s.setProxyListening())
-		api.PUT("/proxies/:id/filter_enabled/", s.setFilterEnabled())
+		api.PUT("/proxies/:id/filters/:filter_id/", s.updateFilterState())
 	}
 
 	logrus.Infof("Serving static dir: %s", s.StaticDir)

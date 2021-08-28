@@ -12,7 +12,7 @@ type Proxy interface {
 	GetConfig() *common.ServiceConfig
 	GetListening() bool
 	SetListening(state bool)
-	SetFilterEnabled(filter int, enabled bool) error
+	SetFilterState(filter int, enabled, alert bool) error
 	GetFilters() []common.Filter
 
 	fmt.Stringer

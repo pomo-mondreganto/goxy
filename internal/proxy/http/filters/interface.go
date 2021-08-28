@@ -32,6 +32,7 @@ type Filter struct {
 	Rule    Rule
 	Verdict common.Verdict
 
+	alert    atomic.Bool
 	disabled atomic.Bool
 }
 
@@ -39,8 +40,16 @@ func (f Filter) IsEnabled() bool {
 	return !f.disabled.Load()
 }
 
+func (f Filter) GetAlert() bool {
+	return f.alert.Load()
+}
+
 func (f *Filter) SetEnabled(enabled bool) {
 	f.disabled.Store(!enabled)
+}
+
+func (f *Filter) SetAlert(alert bool) {
+	f.alert.Store(alert)
 }
 
 func (f Filter) GetRule() common.Rule {

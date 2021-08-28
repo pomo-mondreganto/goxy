@@ -8,6 +8,7 @@ type FilterDescription struct {
 	Rule    string `json:"rule"`
 	Verdict string `json:"verdict"`
 	Enabled bool   `json:"enabled"`
+	Alert   bool   `json:"alert"`
 }
 
 type ProxyDescription struct {

@@ -41,21 +41,21 @@ func (s Server) setProxyListening() gin.HandlerFunc {
 	}
 }
 
-func (s Server) setFilterEnabled() gin.HandlerFunc {
+func (s Server) updateFilterState() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		idReq := new(ModelDetailRequest)
-		if err := c.ShouldBindUri(idReq); err != nil {
+		detReq := new(ProxyFilterDetailRequest)
+		if err := c.ShouldBindUri(detReq); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		dataReq := new(SetFilterListeningRequest)
+		dataReq := new(UpdateFilterStateRequest)
 		if err := c.ShouldBindJSON(dataReq); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		if err := s.ProxyManager.SetFilterEnabled(idReq.ID, dataReq.ID, dataReq.Enabled); err != nil {
+		if err := s.ProxyManager.SetFilterState(detReq.ID, detReq.FilterID, dataReq.Enabled, dataReq.Alert); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

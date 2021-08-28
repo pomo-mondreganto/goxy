@@ -111,6 +111,7 @@ func (m Manager) DumpProxies() []models.ProxyDescription {
 				Rule:    f.GetRule().String(),
 				Verdict: f.GetVerdict().String(),
 				Enabled: f.IsEnabled(),
+				Alert:   f.GetAlert(),
 			}
 			descriptions = append(descriptions, desc)
 		}
@@ -133,12 +134,12 @@ func (m *Manager) SetProxyListening(proxyID int, listening bool) error {
 	return nil
 }
 
-func (m *Manager) SetFilterEnabled(proxyID, filterID int, enabled bool) error {
+func (m *Manager) SetFilterState(proxyID, filterID int, enabled, alert bool) error {
 	if proxyID < 1 || proxyID > len(m.proxies) {
 		return ErrNoSuchProxy
 	}
 	p := m.proxies[proxyID-1]
-	if err := p.SetFilterEnabled(filterID-1, enabled); err != nil {
+	if err := p.SetFilterState(filterID-1, enabled, alert); err != nil {
 		return fmt.Errorf("setting filter enabled for proxy %v: %w", p, err)
 	}
 	return nil
