@@ -63,6 +63,7 @@ services:
     type: http
     listen: 0.0.0.0:5001
     target: 127.0.0.1:5000
+    request_timeout: 10s
     filters:
       - rule: ingress
         verdict: "alert::ingress"

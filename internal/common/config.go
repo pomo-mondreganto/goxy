@@ -1,5 +1,7 @@
 package common
 
+import "time"
+
 type RuleConfig struct {
 	Name  string   `json:"name" mapstructure:"name"`
 	Type  string   `json:"type" mapstructure:"type"`
@@ -13,11 +15,12 @@ type FilterConfig struct {
 }
 
 type ServiceConfig struct {
-	Name    string         `json:"name" mapstructure:"name"`
-	Type    string         `json:"type" mapstructure:"type"`
-	Listen  string         `json:"listen" mapstructure:"listen"`
-	Target  string         `json:"target" mapstructure:"target"`
-	Filters []FilterConfig `json:"filters" mapstructure:"filters"`
+	Name           string         `json:"name" mapstructure:"name"`
+	Type           string         `json:"type" mapstructure:"type"`
+	Listen         string         `json:"listen" mapstructure:"listen"`
+	Target         string         `json:"target" mapstructure:"target"`
+	RequestTimeout *time.Duration `json:"request_timeout" mapstructure:"request_timeout"`
+	Filters        []FilterConfig `json:"filters" mapstructure:"filters"`
 }
 
 type ProxyConfig struct {

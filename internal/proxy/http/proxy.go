@@ -230,12 +230,13 @@ func (p Proxy) getHandler() http.HandlerFunc {
 			return
 		}
 
-		w.WriteHeader(response.StatusCode)
 		for k, vals := range response.Header {
 			for _, v := range vals {
 				w.Header().Add(k, v)
 			}
 		}
+		w.WriteHeader(response.StatusCode)
+
 		if _, err := io.Copy(w, response.Body); err != nil {
 			respLogger.Errorf("Error copying body: %v", err)
 			handleError(w)
@@ -249,8 +250,12 @@ func (p *Proxy) serve() {
 
 	p.logger.Info("Starting")
 
+	timeout := time.Second * 5
+	if p.serviceConfig.RequestTimeout != nil {
+		timeout = *p.serviceConfig.RequestTimeout
+	}
 	p.client = &http.Client{
-		Timeout: time.Second * 5,
+		Timeout: timeout,
 	}
 
 	p.server = &http.Server{
