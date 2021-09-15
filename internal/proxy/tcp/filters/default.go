@@ -12,11 +12,12 @@ var DefaultRuleWrappers = map[string]RuleWrapperCreator{
 }
 
 var DefaultRuleCreators = map[string]RuleCreator{
-	"ingress":    NewIngressRule,
-	"regex":      NewRegexRule,
-	"contains":   NewContainsRule,
-	"icontains":  NewIContainsRule,
-	"counter_gt": NewCounterGTRule,
+	"ingress":       NewIngressRule,
+	"regex":         NewRegexRule,
+	"contains":      NewContainsRule,
+	"icontains":     NewIContainsRule,
+	"counter_gt":    NewCounterGTRule,
+	"volgactf_flag": NewVolgaCTFRule,
 
 	"and": NewCompositeAndRule,
 	"not": NewCompositeNotRule,

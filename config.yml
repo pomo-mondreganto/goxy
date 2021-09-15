@@ -59,6 +59,8 @@ services:
     listen: 0.0.0.0:1337
     target: 127.0.0.1:1338
     filters:
+      - rule: volgactf_flag
+        verdict: inc::flags
       - rule: regex_kek
         verdict: inc::keks
       - rule: egress
