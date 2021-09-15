@@ -14,6 +14,11 @@ rules:
     type: tcp::ingress::not::contains
     args:
       - "legit"
+
+  - name: volgactf_flag
+    type: tcp::volgactf_flag
+    args:
+      - "JCPOmYvE0bRQ4t6B-yu7cz3dp8F1IVWeXgn5AwkZfqa9_UxDThjKNiMlSL2GHosr."
   ######## END TCP RULES #########
 
 

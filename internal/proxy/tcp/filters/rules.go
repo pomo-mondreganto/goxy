@@ -60,6 +60,18 @@ func NewCounterGTRule(_ RuleSet, cfg common.RuleConfig) (Rule, error) {
 	return r, nil
 }
 
+func NewVolgaCTFRule(_ RuleSet, cfg common.RuleConfig) (Rule, error) {
+	if len(cfg.Args) != 1 {
+		return nil, ErrInvalidRuleArgs
+	}
+	defaultAlp := []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+	r := VolgaModifyRule{
+		alpOriginal: defaultAlp,
+		alpShifted:  []byte(cfg.Args[0]),
+	}
+	return r, nil
+}
+
 type IngressRule struct{}
 
 func (r IngressRule) Apply(_ *common.ProxyContext, _ []byte, ingress bool) (bool, error) {
@@ -80,6 +92,47 @@ func (r RegexRule) Apply(_ *common.ProxyContext, buf []byte, _ bool) (bool, erro
 
 func (r RegexRule) String() string {
 	return fmt.Sprintf("regex '%s'", r.regex)
+}
+
+type VolgaModifyRule struct {
+	alpOriginal []byte
+	alpShifted  []byte
+}
+
+func findByteInSlice(buf []byte, value byte) int {
+	for i, elem := range buf {
+		if value == elem {
+			return i
+		}
+	}
+	return -1
+}
+
+func (r VolgaModifyRule) Apply(_ *common.ProxyContext, buf []byte, ingress bool) (bool, error) {
+	alpFrom := r.alpOriginal
+	alpTo := r.alpShifted
+	if ingress {
+		alpFrom, alpTo = alpTo, alpFrom
+	}
+	prefix := `VolgaCTF{`
+	suffix := `}`
+	VolgaCTFFlagRegex := regexp.MustCompile(prefix + `[\w-]*\.[\w-]*\.[\w-]*` + suffix)
+	allIndices := VolgaCTFFlagRegex.FindAllIndex(buf, -1)
+	for _, indices := range allIndices {
+		start, end := indices[0]+len(prefix), indices[1]-len(suffix)
+		for i := start; i < end; i++ {
+			alpIndex := findByteInSlice(alpFrom, buf[i])
+			if alpIndex == -1 {
+				continue
+			}
+			buf[i] = alpTo[alpIndex]
+		}
+	}
+	return len(allIndices) != 0, nil
+}
+
+func (r VolgaModifyRule) String() string {
+	return "VolgaCTF flag editor"
 }
 
 type ContainsRule struct {
