@@ -14,6 +14,11 @@ rules:
     type: tcp::ingress::not::contains
     args:
       - "legit"
+
+  - name: volgactf_flag
+    type: tcp::volgactf_flag
+    args:
+      - "JCPOmYvE0bRQ4t6B-yu7cz3dp8F1IVWeXgn5AwkZfqa9_UxDThjKNiMlSL2GHosr."
   ######## END TCP RULES #########
 
 
@@ -46,6 +51,9 @@ rules:
     field: "User-Agent"
     args:
       - "python-requests/2.18.4"
+
+  - name: "http_volgactf"
+    type: http::transform_volga
   ######## END HTTP RULES #########
 
 services:
@@ -54,6 +62,8 @@ services:
     listen: 0.0.0.0:1337
     target: 127.0.0.1:1338
     filters:
+      - rule: volgactf_flag
+        verdict: "alert::flag transformed"
       - rule: regex_kek
         verdict: inc::keks
       - rule: egress
@@ -65,7 +75,7 @@ services:
   - name: test http
     type: http
     listen: 0.0.0.0:5001
-    target: 127.0.0.1:5000
+    target: pomo-mondreganto.me
     request_timeout: 10s
     filters:
       - rule: ingress
@@ -81,6 +91,8 @@ services:
         verdict: "alert::requests"
       - rule: not_requests_2184
         verdict: "alert::not requests 2.18.4"
+      - rule: http_volgactf
+        verdict: "alert::flag transformed"
 
 web:
   username: admin

@@ -26,7 +26,7 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 	for _, rc := range cfg {
 		if strings.HasPrefix(rc.Type, "http::") {
 			tokens := strings.Split(rc.Type, "::")
-			if len(tokens) < 3 {
+			if len(tokens) < 2 {
 				return nil, fmt.Errorf("invalid rule: %s", rc.Type)
 			}
 
@@ -45,7 +45,8 @@ func NewRuleSet(cfg []common.RuleConfig) (*RuleSet, error) {
 
 			// the last rule in chain must be either the composite rule or raw rule.
 			lastToken := tokens[len(tokens)-1]
-			if creator, ok = DefaultRuleCreators[lastToken]; ok {
+			if rule, ok = DefaultTransformers[lastToken]; ok {
+			} else if creator, ok = DefaultRuleCreators[lastToken]; ok {
 				// default rule type
 				if rule, err = creator(rs, rc); err != nil {
 					return nil, fmt.Errorf("creating rule %s: %w", lastToken, err)

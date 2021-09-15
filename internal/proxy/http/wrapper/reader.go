@@ -16,6 +16,10 @@ func NewBodyReader(r io.Reader) (*BodyReader, error) {
 	return br, nil
 }
 
+func NewBodyReaderFromRaw(data []byte) *BodyReader {
+	return &BodyReader{b: bytes.NewReader(data)}
+}
+
 type BodyReader struct {
 	b *bytes.Reader
 }

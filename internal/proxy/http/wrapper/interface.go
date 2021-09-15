@@ -14,4 +14,6 @@ type Entity interface {
 	GetBody() ([]byte, error)
 	GetJSON() (interface{}, error)
 	GetForm() (map[string][]string, error)
+
+	SetBody([]byte)
 }
