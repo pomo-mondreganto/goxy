@@ -5,6 +5,10 @@ var DefaultRules = map[string]Rule{
 	"egress":  &CompositeNotRule{new(IngressRule)},
 }
 
+var DefaultTransformers = map[string]Rule{
+	"transform_volga": NewTransformVolgaCTF(),
+}
+
 var DefaultRuleWrappers = map[string]RuleWrapperCreator{
 	"ingress": NewIngressWrapper,
 	"egress":  NewEgressWrapper,

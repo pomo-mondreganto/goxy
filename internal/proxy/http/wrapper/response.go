@@ -58,6 +58,11 @@ func (r Response) GetURL() *url.URL {
 	return nil
 }
 
+func (r Response) SetBody(data []byte) {
+	r.resetBody()
+	r.Response.Body = NewBodyReaderFromRaw(data)
+}
+
 func (r Response) resetBody() {
 	if err := r.Response.Body.Close(); err != nil {
 		logrus.Errorf("Error resetting response body: %v", err)

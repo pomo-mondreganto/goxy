@@ -209,6 +209,9 @@ func (p Proxy) getHandler() http.HandlerFunc {
 		r.URL.Scheme = "http"
 		r.URL.Host = p.TargetAddr
 		r.RequestURI = ""
+		r.Host = ""
+		r.Header.Del("Accept-Encoding")
+		reqLogger.Debugf("Making a request: %v", r)
 		response, err := p.client.Do(r)
 		if err != nil {
 			respLogger.Errorf("Error making target request: %v", err)
