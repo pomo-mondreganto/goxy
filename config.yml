@@ -1,59 +1,59 @@
 rules:
   ####### TCP RULES ########
   - name: regex_kek
-    type: tcp::regex
+    type: regex
     args:
       - "ke?k"
 
   - name: contains_attack
-    type: tcp::contains
+    type: contains
     args:
       - "attack"
 
   - name: ingress_not_contains_legit
-    type: tcp::ingress::not::contains
+    type: ingress::not::contains
     args:
       - "legit"
 
-  - name: volgactf_flag
-    type: tcp::volgactf_flag
-    args:
-      - "JCPOmYvE0bRQ4t6B-yu7cz3dp8F1IVWeXgn5AwkZfqa9_UxDThjKNiMlSL2GHosr."
+  #  - name: volgactf_flag
+  #    type: volgactf_flag
+  #    args:
+  #      - "JCPOmYvE0bRQ4t6B-yu7cz3dp8F1IVWeXgn5AwkZfqa9_UxDThjKNiMlSL2GHosr."
   ######## END TCP RULES #########
 
 
   ######## HTTP RULES #########
   - name: http_form_username_contains_admin
-    type: http::form::array::any::contains
+    type: form::any::contains
     field: username
     args:
       - "admi"
 
   - name: http_body_contains_pt
-    type: http::ingress::body::contains
+    type: ingress::body::contains
     args:
       - "../"
 
   - name: curl_request
-    type: http::headers::any::icontains
+    type: headers::any::icontains
     field: "User-Agent"
     args:
       - "cUrl"
 
   - name: requests
-    type: http::headers::any::contains
+    type: headers::any::contains
     field: "User-Agent"
     args:
       - "python-requests"
 
   - name: not_requests_2184
-    type: http::ingress::not::headers::contains
+    type: ingress::not::headers::contains
     field: "User-Agent"
     args:
       - "python-requests/2.18.4"
 
-  - name: "http_volgactf"
-    type: http::transform_volga
+  #  - name: "http_volgactf"
+  #    type: transform_volga
   ######## END HTTP RULES #########
 
 services:
@@ -62,8 +62,8 @@ services:
     listen: 0.0.0.0:1337
     target: 127.0.0.1:1338
     filters:
-      - rule: volgactf_flag
-        verdict: "alert::flag transformed"
+      #      - rule: volgactf_flag
+      #        verdict: "alert::flag transformed"
       - rule: regex_kek
         verdict: inc::keks
       - rule: egress
@@ -91,9 +91,12 @@ services:
         verdict: "alert::requests"
       - rule: not_requests_2184
         verdict: "alert::not requests 2.18.4"
-      - rule: http_volgactf
-        verdict: "alert::flag transformed"
+#      - rule: http_volgactf
+#        verdict: "alert::flag transformed"
 
 web:
   username: admin
   password: 1234
+
+mongol:
+  addr: 127.0.0.1:5139

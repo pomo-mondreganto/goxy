@@ -2,7 +2,8 @@ package filters
 
 import (
 	"fmt"
-	"goxy/internal/proxy/http/wrapper"
+
+	"goxy/internal/wrapper"
 )
 
 type JsonEntityConverter struct{}
@@ -22,7 +23,10 @@ func (c JsonEntityConverter) String() string {
 type CookiesEntityConverter struct{}
 
 func (c CookiesEntityConverter) Convert(e wrapper.Entity) (interface{}, error) {
-	cookies := e.GetCookies()
+	cookies, err := e.GetCookies()
+	if err != nil {
+		return nil, fmt.Errorf("getting cookies: %w", err)
+	}
 	result := make(map[string]string)
 	for _, cookie := range cookies {
 		result[cookie.Name] = cookie.Value
@@ -37,7 +41,11 @@ func (c CookiesEntityConverter) String() string {
 type HeadersEntityConverter struct{}
 
 func (c HeadersEntityConverter) Convert(e wrapper.Entity) (interface{}, error) {
-	return convertMapListString(e.GetHeaders()), nil
+	headers, err := e.GetHeaders()
+	if err != nil {
+		return nil, fmt.Errorf("getting headers: %w", err)
+	}
+	return convertMapListString(headers), nil
 }
 
 func (c HeadersEntityConverter) String() string {
@@ -47,7 +55,11 @@ func (c HeadersEntityConverter) String() string {
 type QueryEntityConverter struct{}
 
 func (c QueryEntityConverter) Convert(e wrapper.Entity) (interface{}, error) {
-	return convertMapListString(e.GetURL().Query()), nil
+	url, err := e.GetURL()
+	if err != nil {
+		return nil, fmt.Errorf("getting url: %w", err)
+	}
+	return convertMapListString(url.Query()), nil
 }
 
 func (c QueryEntityConverter) String() string {
@@ -71,7 +83,11 @@ func (c BodyEntityConverter) String() string {
 type PathEntityConverter struct{}
 
 func (c PathEntityConverter) Convert(e wrapper.Entity) (interface{}, error) {
-	return e.GetURL().Path, nil
+	url, err := e.GetURL()
+	if err != nil {
+		return nil, fmt.Errorf("getting url: %w", err)
+	}
+	return url.Path, nil
 }
 
 func (c PathEntityConverter) String() string {
@@ -90,6 +106,20 @@ func (c FormEntityConverter) Convert(e wrapper.Entity) (interface{}, error) {
 
 func (c FormEntityConverter) String() string {
 	return "form"
+}
+
+type RawEntityConverter struct{}
+
+func (c RawEntityConverter) Convert(e wrapper.Entity) (interface{}, error) {
+	data, err := e.GetRaw()
+	if err != nil {
+		return nil, fmt.Errorf("getting raw data: %w", err)
+	}
+	return data, nil
+}
+
+func (c RawEntityConverter) String() string {
+	return "raw"
 }
 
 func convertMapListString(data map[string][]string) map[string]interface{} {

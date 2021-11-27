@@ -24,7 +24,13 @@ type ServiceConfig struct {
 	Filters        []FilterConfig `json:"filters" mapstructure:"filters"`
 }
 
+type MongolConfig struct {
+	Addr  string `mapstructure:"addr"`
+	Token string `mapstructure:"token"`
+}
+
 type ProxyConfig struct {
 	Rules    []RuleConfig    `json:"rules" mapstructure:"rules"`
 	Services []ServiceConfig `json:"services" mapstructure:"services"`
+	Mongol   *MongolConfig   `json:"-" mapstructure:"mongol"`
 }

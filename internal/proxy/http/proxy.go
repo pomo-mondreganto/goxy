@@ -4,14 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.uber.org/atomic"
-	"goxy/internal/common"
-	"goxy/internal/proxy/http/filters"
-	"goxy/internal/proxy/http/wrapper"
 	"io"
+	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"go.uber.org/atomic"
+
+	"goxy/internal/common"
+	"goxy/internal/export"
+	"goxy/internal/filters"
+	"goxy/internal/wrapper"
 
 	"github.com/sirupsen/logrus"
 )
@@ -21,7 +27,7 @@ var (
 	ErrInvalidFilter   = errors.New("no such filter")
 )
 
-func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
+func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet, pc *export.ProducerClient) (*Proxy, error) {
 	fts := make([]filters.Filter, 0, len(cfg.Filters))
 	for _, f := range cfg.Filters {
 		rule, ok := rs.GetRule(f.Rule)
@@ -44,11 +50,13 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
 	p := &Proxy{
 		ListenAddr: cfg.Listen,
 		TargetAddr: cfg.Target,
+		Name:       cfg.Name,
 
 		serviceConfig: cfg,
 		logger:        logger,
 		filters:       fts,
 		wg:            new(sync.WaitGroup),
+		producer:      pc,
 	}
 	return p, nil
 }
@@ -56,6 +64,7 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
 type Proxy struct {
 	ListenAddr string
 	TargetAddr string
+	Name       string
 
 	serviceConfig common.ServiceConfig
 	closing       bool
@@ -65,6 +74,7 @@ type Proxy struct {
 	wg            *sync.WaitGroup
 	logger        *logrus.Entry
 	filters       []filters.Filter
+	producer      *export.ProducerClient
 }
 
 func (p Proxy) GetListening() bool {
@@ -119,7 +129,7 @@ func (p Proxy) GetConfig() *common.ServiceConfig {
 }
 
 func (p Proxy) String() string {
-	return fmt.Sprintf("HTTP proxy %s", p.ListenAddr)
+	return fmt.Sprintf("HTTP proxy %s (%s)", p.Name, p.ListenAddr)
 }
 
 func (p Proxy) GetFilters() []common.Filter {
@@ -173,10 +183,16 @@ func (p Proxy) getHandler() http.HandlerFunc {
 		return w, nil
 	}
 
-	reqLogger := p.logger.WithField("side", "request")
-	respLogger := p.logger.WithField("side", "response")
-
 	return func(w http.ResponseWriter, r *http.Request) {
+		reqLogger := p.logger.WithFields(logrus.Fields{
+			"side": "request",
+			"addr": r.RemoteAddr,
+		})
+		respLogger := p.logger.WithFields(logrus.Fields{
+			"side": "response",
+			"addr": r.RemoteAddr,
+		})
+
 		reqLogger.Debugf("New request: %v", r)
 
 		if !p.GetListening() {
@@ -196,6 +212,13 @@ func (p Proxy) getHandler() http.HandlerFunc {
 		reqEntity := &wrapper.Request{Request: r}
 		if err := p.runFilters(pctx, reqEntity); err != nil {
 			reqLogger.Errorf("Error running filters: %v", err)
+			handleError(w)
+			return
+		}
+
+		base := p.getBasePacket(r)
+		if err := p.exportEntity(r.Context(), reqEntity, base, reqLogger); err != nil {
+			reqLogger.Errorf("Error exporting packet: %v", err)
 			handleError(w)
 			return
 		}
@@ -231,6 +254,11 @@ func (p Proxy) getHandler() http.HandlerFunc {
 			handleError(w)
 			return
 		}
+		if err := p.exportEntity(r.Context(), respEntity, base, respLogger); err != nil {
+			respLogger.Errorf("Error exporting packet: %v", err)
+			handleError(w)
+			return
+		}
 
 		if pctx.GetFlag(common.DropFlag) {
 			respLogger.Debugf("Dropping connection")
@@ -251,6 +279,46 @@ func (p Proxy) getHandler() http.HandlerFunc {
 			return
 		}
 	}
+}
+
+func (p *Proxy) getBasePacket(r *http.Request) *export.BasePacket {
+	srcHost, srcPort := splitAddrSafe(r.RemoteAddr, 0)
+	dstHost, dstPort := splitAddrSafe(r.Host, 0)
+
+	return &export.BasePacket{
+		Source: fmt.Sprintf("goxy-%s", p.Name),
+		Endpoints: &export.EndpointData{
+			IPSrc:   srcHost,
+			IPDst:   dstHost,
+			PortSrc: srcPort,
+			PortDst: dstPort,
+		},
+		Proto:            "tcp",
+		ProducerStreamID: uuid.New().String(),
+	}
+}
+
+func (p *Proxy) exportEntity(ctx context.Context, e wrapper.Entity, base *export.BasePacket, logger *logrus.Entry) error {
+	if p.producer == nil {
+		logger.Debug("Exporter is disabled")
+		return nil
+	}
+	body, err := e.GetRaw()
+	if err != nil {
+		return fmt.Errorf("getting raw data: %w", err)
+	}
+	reqPacket := export.Packet{
+		BasePacket:  base,
+		Content:     body,
+		CaptureTime: time.Now(),
+		FilterData:  0, // TODO: add filters.
+		Inbound:     e.GetIngress(),
+		Reversed:    !e.GetIngress(),
+	}
+	if err := p.producer.Send(ctx, &reqPacket); err != nil {
+		logger.Warningf("Error sending to producer: %v", err)
+	}
+	return nil
 }
 
 func (p *Proxy) serve() {
@@ -278,4 +346,17 @@ func (p *Proxy) serve() {
 		p.logger.Errorf("Error in server: %v", err)
 	}
 	p.logger.Infof("Server shutdown complete")
+}
+
+func splitAddrSafe(addr string, defPort int) (host string, port int) {
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = "0.0.0.0"
+		port = defPort
+	} else {
+		if port, err = strconv.Atoi(portStr); err != nil {
+			port = defPort
+		}
+	}
+	return host, port
 }

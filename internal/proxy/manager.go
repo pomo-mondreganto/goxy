@@ -4,43 +4,42 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"goxy/internal/common"
-	"goxy/internal/models"
-	"goxy/internal/proxy/http"
-	"goxy/internal/proxy/tcp"
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"goxy/internal/common"
+	"goxy/internal/export"
+	"goxy/internal/filters"
+	"goxy/internal/models"
+	"goxy/internal/proxy/http"
+	"goxy/internal/proxy/tcp"
 
-	httpfilters "goxy/internal/proxy/http/filters"
-	tcpfilters "goxy/internal/proxy/tcp/filters"
+	"github.com/sirupsen/logrus"
 )
 
 var (
 	ErrNoSuchProxy = errors.New("no such proxy")
 )
 
-func NewManager(cfg *common.ProxyConfig) (*Manager, error) {
-	tcpRuleSet, err := tcpfilters.NewRuleSet(cfg.Rules)
+func NewManager(cfg *common.ProxyConfig, producer *export.ProducerClient) (*Manager, error) {
+	rs, err := filters.NewRuleSet(cfg.Rules)
 	if err != nil {
-		logrus.Fatalf("Error creating tcp ruleset: %v", err)
+		return nil, fmt.Errorf("parsing rules: %w", err)
 	}
-
-	httpRuleSet, err := httpfilters.NewRuleSet(cfg.Rules)
-	if err != nil {
-		logrus.Fatalf("Error creating http ruleset: %v", err)
+	logrus.Debug("Parsed rules:")
+	for name, rule := range rs.Rules {
+		logrus.Debugf("%s -> %s", name, rule)
 	}
 
 	proxies := make([]Proxy, 0)
 	for _, s := range cfg.Services {
 		var p Proxy
 		if s.Type == "tcp" {
-			if p, err = tcp.NewProxy(s, tcpRuleSet); err != nil {
+			if p, err = tcp.NewProxy(s, rs, producer); err != nil {
 				logrus.Fatalf("Error creating tcp proxy: %v", err)
 			}
 		} else if s.Type == "http" {
-			if p, err = http.NewProxy(s, httpRuleSet); err != nil {
+			if p, err = http.NewProxy(s, rs, producer); err != nil {
 				logrus.Fatalf("Error creating http proxy: %v", err)
 			}
 		} else {
@@ -102,9 +101,9 @@ func (m Manager) DumpProxies() []models.ProxyDescription {
 	result := make([]models.ProxyDescription, 0, len(m.proxies))
 	for i, p := range m.proxies {
 		proxyID := i + 1
-		filters := p.GetFilters()
-		descriptions := make([]models.FilterDescription, 0, len(filters))
-		for j, f := range filters {
+		fs := p.GetFilters()
+		descriptions := make([]models.FilterDescription, 0, len(fs))
+		for j, f := range fs {
 			desc := models.FilterDescription{
 				ID:      j + 1,
 				ProxyID: proxyID,

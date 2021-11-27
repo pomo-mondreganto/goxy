@@ -2,12 +2,20 @@ package filters
 
 import (
 	"fmt"
+
 	"go.uber.org/atomic"
+
 	"goxy/internal/common"
+	"goxy/internal/wrapper"
 )
 
 type Rule interface {
-	Apply(ctx *common.ProxyContext, buf []byte, ingress bool) (bool, error)
+	Apply(ctx *common.ProxyContext, i interface{}) (bool, error)
+	fmt.Stringer
+}
+
+type EntityConverter interface {
+	Convert(e wrapper.Entity) (interface{}, error)
 	fmt.Stringer
 }
 

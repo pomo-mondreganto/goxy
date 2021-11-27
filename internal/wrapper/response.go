@@ -3,10 +3,12 @@ package wrapper
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Response is a wrapper around http.Response implementing Entity interface.
@@ -43,19 +45,28 @@ func (r Response) GetBody() ([]byte, error) {
 	return buf, nil
 }
 
-func (r Response) GetCookies() []*http.Cookie {
-	return r.Response.Cookies()
+func (r Response) GetCookies() ([]*http.Cookie, error) {
+	return r.Response.Cookies(), nil
 }
 
-func (r Response) GetHeaders() map[string][]string {
-	return r.Response.Header
+func (r Response) GetHeaders() (map[string][]string, error) {
+	return r.Response.Header, nil
 }
 
-func (r Response) GetURL() *url.URL {
+func (r Response) GetURL() (*url.URL, error) {
 	if r.Response.Request != nil {
-		return r.Response.Request.URL
+		return r.Response.Request.URL, nil
 	}
-	return nil
+	return nil, nil
+}
+
+func (r Response) GetRaw() ([]byte, error) {
+	defer r.resetBody()
+	data, err := httputil.DumpResponse(r.Response, true)
+	if err != nil {
+		return nil, fmt.Errorf("dumping request: %w", err)
+	}
+	return data, err
 }
 
 func (r Response) SetBody(data []byte) {

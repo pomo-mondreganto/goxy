@@ -4,12 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.uber.org/atomic"
-	"goxy/internal/common"
-	"goxy/internal/proxy/tcp/filters"
 	"io"
 	"net"
+	"strconv"
 	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"go.uber.org/atomic"
+
+	"goxy/internal/common"
+	"goxy/internal/export"
+	"goxy/internal/filters"
+	"goxy/internal/wrapper"
 
 	"github.com/sirupsen/logrus"
 )
@@ -22,7 +29,7 @@ var (
 	ErrInvalidFilter   = errors.New("no such filter")
 )
 
-func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
+func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet, pc *export.ProducerClient) (*Proxy, error) {
 	fts := make([]filters.Filter, 0, len(cfg.Filters))
 	for _, f := range cfg.Filters {
 		rule, ok := rs.GetRule(f.Rule)
@@ -45,12 +52,14 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
 	p := &Proxy{
 		ListenAddr: cfg.Listen,
 		TargetAddr: cfg.Target,
+		Name:       cfg.Name,
 
 		serviceConfig: cfg,
 		logger:        logger,
 		filters:       fts,
 		conns:         newConnMap(),
 		wg:            new(sync.WaitGroup),
+		producer:      pc,
 	}
 	return p, nil
 }
@@ -58,6 +67,7 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet) (*Proxy, error) {
 type Proxy struct {
 	ListenAddr string
 	TargetAddr string
+	Name       string
 
 	serviceConfig common.ServiceConfig
 	closing       bool
@@ -68,6 +78,7 @@ type Proxy struct {
 	listener      net.Listener
 	logger        *logrus.Entry
 	filters       []filters.Filter
+	producer      *export.ProducerClient
 }
 
 func (p Proxy) GetListening() bool {
@@ -132,7 +143,11 @@ func (p Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) e
 		if !f.IsEnabled() {
 			continue
 		}
-		res, err := f.Rule.Apply(pctx, buf, ingress)
+		entity := wrapper.Packet{
+			Content: buf,
+			Ingress: ingress,
+		}
+		res, err := f.Rule.Apply(pctx, entity)
 		if err != nil {
 			return fmt.Errorf("error in rule %T: %w", f.Rule, err)
 		}
@@ -164,7 +179,7 @@ func (p Proxy) GetFilters() []common.Filter {
 	return result
 }
 
-func (p Proxy) oneSideHandler(conn *Connection, logger *logrus.Entry, ingress bool) error {
+func (p Proxy) oneSideHandler(conn *Connection, logger *logrus.Entry, ingress bool, base *export.BasePacket) error {
 	var (
 		src io.Reader
 		dst io.Writer
@@ -183,6 +198,7 @@ func (p Proxy) oneSideHandler(conn *Connection, logger *logrus.Entry, ingress bo
 		if nr > 0 {
 
 			data := buf[:nr]
+			p.exportBuf(context.Background(), data, ingress, base, logger)
 
 			if err := p.runFilters(conn.Context, data, ingress); err != nil {
 				logger.Errorf("Error running filters: %v", err)
@@ -213,6 +229,24 @@ func (p Proxy) oneSideHandler(conn *Connection, logger *logrus.Entry, ingress bo
 	return nil
 }
 
+func (p *Proxy) exportBuf(ctx context.Context, buf []byte, ingress bool, base *export.BasePacket, logger *logrus.Entry) {
+	if p.producer == nil {
+		logger.Debug("Exporter is disabled")
+		return
+	}
+	reqPacket := export.Packet{
+		BasePacket:  base,
+		Content:     buf,
+		CaptureTime: time.Now(),
+		FilterData:  0, // TODO: add filters.
+		Inbound:     ingress,
+		Reversed:    !ingress,
+	}
+	if err := p.producer.Send(ctx, &reqPacket); err != nil {
+		logger.Warningf("Error sending to producer: %v", err)
+	}
+}
+
 func (p Proxy) handleConnection(id string) {
 	defer p.wg.Done()
 
@@ -224,6 +258,8 @@ func (p Proxy) handleConnection(id string) {
 		}
 		p.conns.remove(id)
 	}()
+
+	base := p.getBasePacket(conn)
 
 	connLogger.Debugf("Connection received")
 	localConn, err := net.Dial("tcp", p.TargetAddr)
@@ -244,7 +280,7 @@ func (p Proxy) handleConnection(id string) {
 			}
 			logger.Debug("Counterpart connection closed")
 		}()
-		if err := p.oneSideHandler(c, logger, ingress); err != nil {
+		if err := p.oneSideHandler(c, logger, ingress, base); err != nil {
 			if !isConnectionClosedErr(err) {
 				logger.Errorf("Error in connection: %v", err)
 			} else {
@@ -258,6 +294,23 @@ func (p Proxy) handleConnection(id string) {
 	go handler(&wg, true)
 	go handler(&wg, false)
 	wg.Wait()
+}
+
+func (p *Proxy) getBasePacket(conn net.Conn) *export.BasePacket {
+	srcHost, srcPort := splitAddrSafe(conn.RemoteAddr().String(), 0)
+	dstHost, dstPort := splitAddrSafe(conn.LocalAddr().String(), 0)
+
+	return &export.BasePacket{
+		Source: fmt.Sprintf("goxy-%s", p.Name),
+		Endpoints: &export.EndpointData{
+			IPSrc:   srcHost,
+			IPDst:   dstHost,
+			PortSrc: srcPort,
+			PortDst: dstPort,
+		},
+		Proto:            "tcp",
+		ProducerStreamID: uuid.New().String(),
+	}
 }
 
 func (p *Proxy) serve() {
@@ -289,4 +342,17 @@ func (p *Proxy) serve() {
 		p.wg.Add(1)
 		go p.handleConnection(connID)
 	}
+}
+
+func splitAddrSafe(addr string, defPort int) (host string, port int) {
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = "0.0.0.0"
+		port = defPort
+	} else {
+		if port, err = strconv.Atoi(portStr); err != nil {
+			port = defPort
+		}
+	}
+	return host, port
 }
