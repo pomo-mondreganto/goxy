@@ -1,23 +1,23 @@
 package tcp
 
 import (
-	"github.com/sirupsen/logrus"
-	"go.uber.org/atomic"
 	"net"
 	"sync"
+
+	"github.com/sirupsen/logrus"
+	"go.uber.org/atomic"
 )
 
 func newConnMap() *connMap {
 	return &connMap{
 		conns: make(map[string]net.Conn),
-		mu:    new(sync.RWMutex),
-		seq:   new(atomic.Int32),
+		seq:   atomic.NewInt32(0),
 	}
 }
 
 type connMap struct {
 	conns map[string]net.Conn
-	mu    *sync.RWMutex
+	mu    sync.RWMutex
 	seq   *atomic.Int32
 }
 

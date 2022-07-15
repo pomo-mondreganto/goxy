@@ -18,11 +18,11 @@ func (p Packet) GetForm() (map[string][]string, error) {
 }
 
 func (p Packet) GetJSON() (interface{}, error) {
-	result := new(interface{})
-	if err := json.Unmarshal(p.Content, result); err != nil {
+	var result interface{}
+	if err := json.Unmarshal(p.Content, &result); err != nil {
 		return nil, fmt.Errorf("parsing json: %w", err)
 	}
-	return *result, nil
+	return result, nil
 }
 
 func (p Packet) GetBody() ([]byte, error) {

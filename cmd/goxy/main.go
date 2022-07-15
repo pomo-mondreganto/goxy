@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"goxy/internal/common"
 	"goxy/internal/export"
@@ -95,7 +96,7 @@ func parseConfig() {
 
 func createMongolConnection(addr, token string) *grpc.ClientConn {
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if token != "" {
 		interceptor := grpcauth.NewClientInterceptor(token)
 		opts = append(opts, grpc.WithUnaryInterceptor(interceptor.Unary()))

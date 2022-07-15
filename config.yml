@@ -15,10 +15,6 @@ rules:
     args:
       - "legit"
 
-  #  - name: volgactf_flag
-  #    type: volgactf_flag
-  #    args:
-  #      - "JCPOmYvE0bRQ4t6B-yu7cz3dp8F1IVWeXgn5AwkZfqa9_UxDThjKNiMlSL2GHosr."
   ######## END TCP RULES #########
 
 
@@ -52,8 +48,6 @@ rules:
     args:
       - "python-requests/2.18.4"
 
-  #  - name: "http_volgactf"
-  #    type: transform_volga
   ######## END HTTP RULES #########
 
 services:
@@ -62,8 +56,6 @@ services:
     listen: 0.0.0.0:1337
     target: 127.0.0.1:1338
     filters:
-      #      - rule: volgactf_flag
-      #        verdict: "alert::flag transformed"
       - rule: regex_kek
         verdict: inc::keks
       - rule: egress
@@ -72,12 +64,14 @@ services:
         alert: true
         verdict: drop
 
-  - name: test http
+  - name: test http -> http
     type: http
     listen: 0.0.0.0:5001
-    target: pomo-mondreganto.me
+    target: https://pomo-mondreganto.me
     request_timeout: 10s
     filters:
+      # dummy verdict.
+      - rule: ingress
       - rule: ingress
         verdict: "alert::ingress"
       - rule: http_body_contains_pt
@@ -91,8 +85,57 @@ services:
         verdict: "alert::requests"
       - rule: not_requests_2184
         verdict: "alert::not requests 2.18.4"
-#      - rule: http_volgactf
-#        verdict: "alert::flag transformed"
+
+  - name: test https -> https
+    type: http
+    listen: 0.0.0.0:5002
+    target: https://pomo-mondreganto.me
+    request_timeout: 10s
+    tls:
+      cert: testdata/tls/cert.pem
+      key: testdata/tls/key.pem
+    filters:
+      # dummy verdict.
+      - rule: ingress
+      - rule: ingress
+        verdict: "alert::ingress"
+      - rule: http_body_contains_pt
+        alert: true
+        verdict: "drop"
+      - rule: http_form_username_contains_admin
+        verdict: "alert::admin in form username"
+      - rule: curl_request
+        verdict: "alert::curl request"
+      - rule: requests
+        verdict: "alert::requests"
+      - rule: not_requests_2184
+        verdict: "alert::not requests 2.18.4"
+
+  - name: test https -> http
+    type: http
+    listen: 0.0.0.0:5003
+    target: http://lnip.su
+    request_timeout: 10s
+    tls:
+      cert: testdata/tls/cert.pem
+      key: testdata/tls/key.pem
+    filters:
+      # dummy verdict.
+      - rule: ingress
+      - rule: ingress
+        verdict: "alert::ingress"
+      - rule: http_body_contains_pt
+        alert: true
+        verdict: "drop"
+      - rule: http_form_username_contains_admin
+        verdict: "alert::admin in form username"
+      - rule: curl_request
+        verdict: "alert::curl request"
+      - rule: requests
+        verdict: "alert::requests"
+      - rule: not_requests_2184
+        verdict: "alert::not requests 2.18.4"
+
 
 web:
   username: admin

@@ -48,7 +48,10 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet, pc *export.Producer
 		fts = append(fts, filter)
 	}
 
-	logger := logrus.WithField("type", "tcp").WithField("listen", cfg.Listen)
+	logger := logrus.WithFields(logrus.Fields{
+		"type":   "tcp",
+		"listen": cfg.Listen,
+	})
 	p := &Proxy{
 		ListenAddr: cfg.Listen,
 		TargetAddr: cfg.Target,
@@ -58,8 +61,8 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet, pc *export.Producer
 		logger:        logger,
 		filters:       fts,
 		conns:         newConnMap(),
-		wg:            new(sync.WaitGroup),
 		producer:      pc,
+		listening:     atomic.NewBool(false),
 	}
 	return p, nil
 }
@@ -71,17 +74,16 @@ type Proxy struct {
 
 	serviceConfig common.ServiceConfig
 	closing       bool
-	listening     atomic.Bool
+	listening     *atomic.Bool
 	conns         *connMap
-	connSeq       *atomic.Int32
-	wg            *sync.WaitGroup
+	wg            sync.WaitGroup
 	listener      net.Listener
 	logger        *logrus.Entry
 	filters       []filters.Filter
 	producer      *export.ProducerClient
 }
 
-func (p Proxy) GetListening() bool {
+func (p *Proxy) GetListening() bool {
 	return p.listening.Load()
 }
 
@@ -134,11 +136,11 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (p Proxy) GetConfig() *common.ServiceConfig {
+func (p *Proxy) GetConfig() *common.ServiceConfig {
 	return &p.serviceConfig
 }
 
-func (p Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) error {
+func (p *Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) error {
 	for _, f := range p.filters {
 		if !f.IsEnabled() {
 			continue
@@ -166,11 +168,11 @@ func (p Proxy) runFilters(pctx *common.ProxyContext, buf []byte, ingress bool) e
 	return nil
 }
 
-func (p Proxy) String() string {
+func (p *Proxy) String() string {
 	return fmt.Sprintf("TCP proxy %s", p.ListenAddr)
 }
 
-func (p Proxy) GetFilters() []common.Filter {
+func (p *Proxy) GetFilters() []common.Filter {
 	result := make([]common.Filter, 0, len(p.filters))
 	for _, f := range p.filters {
 		f := f
@@ -179,7 +181,7 @@ func (p Proxy) GetFilters() []common.Filter {
 	return result
 }
 
-func (p Proxy) oneSideHandler(conn *Connection, logger *logrus.Entry, ingress bool, base *export.BasePacket) error {
+func (p *Proxy) oneSideHandler(conn *Connection, logger *logrus.Entry, ingress bool, base *export.BasePacket) error {
 	var (
 		src io.Reader
 		dst io.Writer
@@ -247,7 +249,7 @@ func (p *Proxy) exportBuf(ctx context.Context, buf []byte, ingress bool, base *e
 	}
 }
 
-func (p Proxy) handleConnection(id string) {
+func (p *Proxy) handleConnection(id string) {
 	defer p.wg.Done()
 
 	conn := p.conns.get(id)

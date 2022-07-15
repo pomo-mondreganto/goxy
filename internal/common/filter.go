@@ -13,4 +13,6 @@ type Filter interface {
 	IsEnabled() bool
 	SetEnabled(enabled bool)
 	SetAlert(alert bool)
+
+	fmt.Stringer
 }

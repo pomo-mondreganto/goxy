@@ -28,11 +28,11 @@ func (r Request) GetForm() (map[string][]string, error) {
 func (r Request) GetJSON() (interface{}, error) {
 	defer r.resetBody()
 	dec := json.NewDecoder(r.Request.Body)
-	result := new(interface{})
-	if err := dec.Decode(result); err != nil {
+	var result interface{}
+	if err := dec.Decode(&result); err != nil {
 		return nil, fmt.Errorf("parsing json: %w", err)
 	}
-	return *result, nil
+	return result, nil
 }
 
 func (r Request) GetBody() ([]byte, error) {

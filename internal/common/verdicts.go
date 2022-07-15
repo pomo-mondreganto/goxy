@@ -3,8 +3,9 @@ package common
 import (
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -18,6 +19,9 @@ type Verdict interface {
 }
 
 func ParseVerdict(desc string) (Verdict, error) {
+	if desc == "" {
+		return VerdictDummy{}, nil
+	}
 	tokens := strings.Split(desc, "::")
 	switch strings.ToLower(tokens[0]) {
 	case "drop":
@@ -99,4 +103,14 @@ func (v VerdictAlert) Mutate(ctx *ProxyContext) error {
 
 func (v VerdictAlert) String() string {
 	return "alert"
+}
+
+type VerdictDummy struct{}
+
+func (v VerdictDummy) Mutate(*ProxyContext) error {
+	return nil
+}
+
+func (v VerdictDummy) String() string {
+	return "dummy"
 }

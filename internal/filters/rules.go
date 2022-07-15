@@ -20,13 +20,19 @@ func NewContainsRule(_ RuleSet, cfg common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
-	return ContainsRule{cfg.Args[0]}, nil
+	return ContainsRule{
+		name:  cfg.Name,
+		value: cfg.Args[0],
+	}, nil
 }
 func NewIContainsRule(_ RuleSet, cfg common.RuleConfig) (Rule, error) {
 	if len(cfg.Args) != 1 {
 		return nil, ErrInvalidRuleArgs
 	}
-	return IContainsRule{strings.ToLower(cfg.Args[0])}, nil
+	return IContainsRule{
+		name:  cfg.Name,
+		value: strings.ToLower(cfg.Args[0]),
+	}, nil
 }
 
 func NewRegexRule(_ RuleSet, cfg common.RuleConfig) (Rule, error) {
@@ -37,7 +43,10 @@ func NewRegexRule(_ RuleSet, cfg common.RuleConfig) (Rule, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compiling regex: %w", err)
 	}
-	return RegexRule{re}, nil
+	return RegexRule{
+		name: cfg.Name,
+		re:   re,
+	}, nil
 }
 
 type IngressRule struct{}
@@ -55,52 +64,49 @@ func (r IngressRule) String() string {
 }
 
 type ContainsRule struct {
+	name  string
 	value string
 }
 
-func (r ContainsRule) Apply(_ *common.ProxyContext, v interface{}) (bool, error) {
-	switch v.(type) {
+func (r ContainsRule) Apply(pctx *common.ProxyContext, v interface{}) (bool, error) {
+	var count int
+	switch t := v.(type) {
 	case wrapper.Entity:
-		body, err := v.(wrapper.Entity).GetBody()
+		body, err := t.GetBody()
 		if err != nil {
 			return false, fmt.Errorf("getting body: %w", err)
 		}
-		return bytes.Contains(body, []byte(r.value)), nil
+		count = bytes.Count(body, []byte(r.value))
 	case map[string]interface{}:
-		for k := range v.(map[string]interface{}) {
+		for k := range t {
 			if k == r.value {
-				return true, nil
+				count++
 			}
 		}
-		return false, nil
 	case []interface{}:
-		for _, v := range v.([]interface{}) {
-			switch v.(type) {
+		for _, v := range t {
+			switch el := v.(type) {
 			case string:
-				if strings.Contains(v.(string), r.value) {
-					return true, nil
-				}
+				count += strings.Count(el, r.value)
 			case []byte:
-				if bytes.Contains(v.([]byte), []byte(r.value)) {
-					return true, nil
-				}
+				count += bytes.Count(el, []byte(r.value))
 			}
 		}
-		return false, nil
 	case []string:
-		for _, s := range v.([]string) {
+		for _, s := range t {
 			if s == r.value {
-				return true, nil
+				count++
 			}
 		}
-		return false, nil
 	case string:
-		return strings.Contains(v.(string), r.value), nil
+		count = strings.Count(t, r.value)
 	case []byte:
-		return bytes.Contains(v.([]byte), []byte(r.value)), nil
+		count = bytes.Count(t, []byte(r.value))
+	default:
+		return false, fmt.Errorf("data type %T: %w", v, ErrInvalidInputType)
 	}
-
-	return false, fmt.Errorf("data type %T: %w", v, ErrInvalidInputType)
+	pctx.AddToCounter(r.name, count)
+	return count > 0, nil
 }
 
 func (r ContainsRule) String() string {
@@ -108,54 +114,53 @@ func (r ContainsRule) String() string {
 }
 
 type IContainsRule struct {
+	name  string
 	value string
 }
 
-func (r IContainsRule) Apply(_ *common.ProxyContext, v interface{}) (bool, error) {
-	switch v.(type) {
+func (r IContainsRule) Apply(pctx *common.ProxyContext, v interface{}) (bool, error) {
+	var count int
+	switch t := v.(type) {
 	case wrapper.Entity:
-		body, err := v.(wrapper.Entity).GetBody()
+		body, err := t.GetBody()
 		if err != nil {
 			return false, fmt.Errorf("getting body: %w", err)
 		}
-		return bytes.Contains(bytes.ToLower(body), []byte(r.value)), nil
+		count = bytes.Count(bytes.ToLower(body), []byte(r.value))
 	case map[string]interface{}:
-		for k := range v.(map[string]interface{}) {
+		for k := range t {
 			if strings.ToLower(k) == r.value {
-				return true, nil
+				count++
 			}
 		}
-		return false, nil
 	case []interface{}:
-		for _, v := range v.([]interface{}) {
-			switch v.(type) {
+		for _, v := range t {
+			switch el := v.(type) {
 			case string:
-				if strings.Contains(strings.ToLower(v.(string)), r.value) {
-					return true, nil
+				if strings.ToLower(el) == r.value {
+					count++
 				}
 			case []byte:
-				if bytes.Contains(bytes.ToLower(v.([]byte)), []byte(r.value)) {
-					return true, nil
+				if bytes.EqualFold(el, []byte(r.value)) {
+					count++
 				}
 			}
 		}
-		return false, nil
-
 	case []string:
-		for _, s := range v.([]string) {
+		for _, s := range t {
 			if strings.ToLower(s) == r.value {
-				return true, nil
+				count++
 			}
 		}
-		return false, nil
-
 	case string:
-		return strings.Contains(strings.ToLower(v.(string)), r.value), nil
+		count = strings.Count(strings.ToLower(t), r.value)
 	case []byte:
-		return bytes.Contains(bytes.ToLower(v.([]byte)), []byte(r.value)), nil
+		count = bytes.Count(bytes.ToLower(t), []byte(r.value))
+	default:
+		return false, fmt.Errorf("data type %T: %w", v, ErrInvalidInputType)
 	}
-
-	return false, fmt.Errorf("data type %T: %w", v, ErrInvalidInputType)
+	pctx.AddToCounter(r.name, count)
+	return count > 0, nil
 }
 
 func (r IContainsRule) String() string {
@@ -163,24 +168,28 @@ func (r IContainsRule) String() string {
 }
 
 type RegexRule struct {
-	re *regexp.Regexp
+	name string
+	re   *regexp.Regexp
 }
 
-func (r RegexRule) Apply(_ *common.ProxyContext, v interface{}) (bool, error) {
-	switch v.(type) {
+func (r RegexRule) Apply(pctx *common.ProxyContext, v interface{}) (bool, error) {
+	var count int
+	switch t := v.(type) {
 	case wrapper.Entity:
-		body, err := v.(wrapper.Entity).GetBody()
+		body, err := t.GetBody()
 		if err != nil {
 			return false, fmt.Errorf("getting body: %w", err)
 		}
-		return r.re.Match(body), nil
+		count = len(r.re.FindAllIndex(body, -1))
 	case string:
-		return r.re.MatchString(v.(string)), nil
+		count = len(r.re.FindAllStringIndex(t, -1))
 	case []byte:
-		return r.re.Match(v.([]byte)), nil
+		count = len(r.re.FindAllIndex(t, -1))
+	default:
+		return false, fmt.Errorf("data type %T: %w", v, ErrInvalidInputType)
 	}
-
-	return false, fmt.Errorf("data type %T: %w", v, ErrInvalidInputType)
+	pctx.AddToCounter(r.name, count)
+	return count > 0, nil
 }
 
 func (r RegexRule) String() string {

@@ -2,11 +2,13 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -46,38 +48,78 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet, pc *export.Producer
 		fts = append(fts, filter)
 	}
 
-	logger := logrus.WithField("type", "http").WithField("listen", cfg.Listen)
+	target, err := url.Parse(cfg.Target)
+	if err != nil {
+		return nil, fmt.Errorf("parsing target: %w", err)
+	}
+
+	timeout := time.Second * 5
+	if cfg.RequestTimeout != 0 {
+		timeout = cfg.RequestTimeout
+	}
+
+	logger := logrus.WithFields(logrus.Fields{
+		"type":   "http",
+		"listen": cfg.Listen,
+	})
 	p := &Proxy{
 		ListenAddr: cfg.Listen,
-		TargetAddr: cfg.Target,
+		Target:     target,
 		Name:       cfg.Name,
 
+		client:        &http.Client{Timeout: timeout},
 		serviceConfig: cfg,
 		logger:        logger,
 		filters:       fts,
-		wg:            new(sync.WaitGroup),
 		producer:      pc,
+		listening:     atomic.NewBool(false),
 	}
+
+	p.server = &http.Server{
+		Addr:         p.ListenAddr,
+		ReadTimeout:  time.Second * 15,
+		WriteTimeout: time.Second * 15,
+		IdleTimeout:  time.Second * 30,
+		Handler:      p.getHandler(),
+	}
+
+	if cfg.TLS != nil {
+		cert, err := tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
+		if err != nil {
+			return nil, fmt.Errorf("loading tls config: %w", err)
+		}
+		p.TLSConfig = &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: true,
+		}
+		p.client.Transport = &http.Transport{
+			TLSClientConfig:   p.TLSConfig,
+			ForceAttemptHTTP2: true,
+		}
+		p.server.TLSConfig = p.TLSConfig
+	}
+
 	return p, nil
 }
 
 type Proxy struct {
 	ListenAddr string
-	TargetAddr string
+	Target     *url.URL
 	Name       string
+	TLSConfig  *tls.Config
 
 	serviceConfig common.ServiceConfig
 	closing       bool
-	listening     atomic.Bool
+	listening     *atomic.Bool
 	server        *http.Server
 	client        *http.Client
-	wg            *sync.WaitGroup
+	wg            sync.WaitGroup
 	logger        *logrus.Entry
 	filters       []filters.Filter
 	producer      *export.ProducerClient
 }
 
-func (p Proxy) GetListening() bool {
+func (p *Proxy) GetListening() bool {
 	return p.listening.Load()
 }
 
@@ -124,15 +166,15 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (p Proxy) GetConfig() *common.ServiceConfig {
+func (p *Proxy) GetConfig() *common.ServiceConfig {
 	return &p.serviceConfig
 }
 
-func (p Proxy) String() string {
+func (p *Proxy) String() string {
 	return fmt.Sprintf("HTTP proxy %s (%s)", p.Name, p.ListenAddr)
 }
 
-func (p Proxy) GetFilters() []common.Filter {
+func (p *Proxy) GetFilters() []common.Filter {
 	result := make([]common.Filter, 0, len(p.filters))
 	for _, f := range p.filters {
 		f := f
@@ -141,7 +183,7 @@ func (p Proxy) GetFilters() []common.Filter {
 	return result
 }
 
-func (p Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
+func (p *Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
 	for _, f := range p.filters {
 		if !f.IsEnabled() {
 			continue
@@ -165,7 +207,7 @@ func (p Proxy) runFilters(pctx *common.ProxyContext, e wrapper.Entity) error {
 	return nil
 }
 
-func (p Proxy) getHandler() http.HandlerFunc {
+func (p *Proxy) getHandler() http.HandlerFunc {
 	handleError := func(w http.ResponseWriter) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
@@ -217,7 +259,8 @@ func (p Proxy) getHandler() http.HandlerFunc {
 		}
 
 		base := p.getBasePacket(r)
-		if err := p.exportEntity(r.Context(), reqEntity, base, reqLogger); err != nil {
+		// Do not terminate export if request is terminated.
+		if err := p.exportEntity(context.Background(), reqEntity, base, reqLogger); err != nil {
 			reqLogger.Errorf("Error exporting packet: %v", err)
 			handleError(w)
 			return
@@ -229,8 +272,8 @@ func (p Proxy) getHandler() http.HandlerFunc {
 			return
 		}
 
-		r.URL.Scheme = "http"
-		r.URL.Host = p.TargetAddr
+		r.URL.Scheme = p.Target.Scheme
+		r.URL.Host = p.Target.Host
 		r.RequestURI = ""
 		r.Host = ""
 		r.Header.Del("Accept-Encoding")
@@ -254,7 +297,8 @@ func (p Proxy) getHandler() http.HandlerFunc {
 			handleError(w)
 			return
 		}
-		if err := p.exportEntity(r.Context(), respEntity, base, respLogger); err != nil {
+		// Do not terminate export if request is terminated.
+		if err := p.exportEntity(context.Background(), respEntity, base, respLogger); err != nil {
 			respLogger.Errorf("Error exporting packet: %v", err)
 			handleError(w)
 			return
@@ -326,24 +370,14 @@ func (p *Proxy) serve() {
 
 	p.logger.Info("Starting")
 
-	timeout := time.Second * 5
-	if p.serviceConfig.RequestTimeout != nil {
-		timeout = *p.serviceConfig.RequestTimeout
-	}
-	p.client = &http.Client{
-		Timeout: timeout,
-	}
-
-	p.server = &http.Server{
-		Addr:         p.ListenAddr,
-		ReadTimeout:  time.Second * 15,
-		WriteTimeout: time.Second * 15,
-		IdleTimeout:  time.Second * 30,
-		Handler:      p.getHandler(),
-	}
-
-	if err := p.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		p.logger.Errorf("Error in server: %v", err)
+	if p.TLSConfig != nil {
+		if err := p.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			p.logger.Errorf("Error in server: %v", err)
+		}
+	} else {
+		if err := p.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			p.logger.Errorf("Error in server: %v", err)
+		}
 	}
 	p.logger.Infof("Server shutdown complete")
 }

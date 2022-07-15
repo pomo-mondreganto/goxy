@@ -1,10 +1,10 @@
 package common
 
 import (
-	"github.com/sirupsen/logrus"
 	"reflect"
-	"sync"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 )
 
 func TestProxyContext_AddToCounter(t *testing.T) {
@@ -62,7 +62,6 @@ func TestProxyContext_DumpFields(t *testing.T) {
 			c := &ProxyContext{
 				flags:    tt.fields.flags,
 				counters: tt.fields.counters,
-				mu:       new(sync.RWMutex),
 			}
 			wantFields := make(logrus.Fields)
 			for k, v := range tt.fields.counters {
@@ -118,7 +117,6 @@ func TestProxyContext_GetCounter(t *testing.T) {
 			c := &ProxyContext{
 				flags:    tt.fields.flags,
 				counters: tt.fields.counters,
-				mu:       new(sync.RWMutex),
 			}
 			if got := c.GetCounter(tt.args.key); got != tt.want {
 				t.Errorf("GetCounter() = %v, want %v", got, tt.want)
@@ -174,7 +172,6 @@ func TestProxyContext_GetFlag(t *testing.T) {
 			c := &ProxyContext{
 				flags:    tt.fields.flags,
 				counters: tt.fields.counters,
-				mu:       new(sync.RWMutex),
 			}
 			if got := c.GetFlag(tt.args.flag); got != tt.want {
 				t.Errorf("GetFlag() = %v, want %v", got, tt.want)
