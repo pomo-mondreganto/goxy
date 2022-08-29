@@ -2,9 +2,9 @@ package filters
 
 import (
 	"fmt"
-	"goxy/internal/common"
-	"goxy/internal/proxy/http/wrapper"
 	"strings"
+
+	"goxy/internal/common"
 )
 
 func NewCompositeAndRule(rs RuleSet, cfg common.RuleConfig) (Rule, error) {
@@ -40,9 +40,9 @@ type CompositeAndRule struct {
 	rules []Rule
 }
 
-func (r CompositeAndRule) Apply(ctx *common.ProxyContext, e wrapper.Entity) (bool, error) {
+func (r CompositeAndRule) Apply(ctx *common.ProxyContext, v interface{}) (bool, error) {
 	for _, rule := range r.rules {
-		res, err := rule.Apply(ctx, e)
+		res, err := rule.Apply(ctx, v)
 		if err != nil {
 			return false, fmt.Errorf("error in rule %T: %w", rule, err)
 		}
@@ -65,8 +65,8 @@ type CompositeNotRule struct {
 	rule Rule
 }
 
-func (r CompositeNotRule) Apply(ctx *common.ProxyContext, e wrapper.Entity) (bool, error) {
-	res, err := r.rule.Apply(ctx, e)
+func (r CompositeNotRule) Apply(ctx *common.ProxyContext, v interface{}) (bool, error) {
+	res, err := r.rule.Apply(ctx, v)
 	if err != nil {
 		return false, fmt.Errorf("error in rule %T: %w", r.rule, err)
 	}

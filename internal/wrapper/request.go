@@ -3,10 +3,12 @@ package wrapper
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Request is a wrapper around http.Request implementing Entity interface.
@@ -26,11 +28,11 @@ func (r Request) GetForm() (map[string][]string, error) {
 func (r Request) GetJSON() (interface{}, error) {
 	defer r.resetBody()
 	dec := json.NewDecoder(r.Request.Body)
-	result := new(interface{})
-	if err := dec.Decode(result); err != nil {
+	var result interface{}
+	if err := dec.Decode(&result); err != nil {
 		return nil, fmt.Errorf("parsing json: %w", err)
 	}
-	return *result, nil
+	return result, nil
 }
 
 func (r Request) GetBody() ([]byte, error) {
@@ -46,16 +48,30 @@ func (r Request) GetIngress() bool {
 	return true
 }
 
-func (r Request) GetCookies() []*http.Cookie {
-	return r.Request.Cookies()
+func (r Request) GetCookies() ([]*http.Cookie, error) {
+	return r.Request.Cookies(), nil
 }
 
-func (r Request) GetHeaders() map[string][]string {
-	return r.Request.Header
+func (r Request) GetHeaders() (map[string][]string, error) {
+	return r.Request.Header, nil
 }
 
-func (r Request) GetURL() *url.URL {
-	return r.Request.URL
+func (r Request) GetURL() (*url.URL, error) {
+	return r.Request.URL, nil
+}
+
+func (r Request) SetBody(data []byte) {
+	r.resetBody()
+	r.Request.Body = NewBodyReaderFromRaw(data)
+}
+
+func (r Request) GetRaw() ([]byte, error) {
+	defer r.resetBody()
+	data, err := httputil.DumpRequest(r.Request, true)
+	if err != nil {
+		return nil, fmt.Errorf("dumping request: %w", err)
+	}
+	return data, err
 }
 
 func (r Request) resetBody() {

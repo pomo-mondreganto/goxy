@@ -2,18 +2,24 @@ package main
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
-	"goxy/internal/common"
-	"goxy/internal/proxy"
-	"goxy/internal/web"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"goxy/internal/common"
+	"goxy/internal/export"
+	"goxy/internal/grpcauth"
+	"goxy/internal/proxy"
+	"goxy/internal/web"
 )
 
 var (
@@ -31,7 +37,8 @@ func main() {
 	parseConfig()
 
 	cfg := parseProxyConfig()
-	m := runProxyManager(cfg)
+	producer := createMongolProducer(cfg)
+	m := runProxyManager(cfg, producer)
 
 	s := web.NewServer(m)
 	httpServer := startHttpServer(s)
@@ -87,6 +94,30 @@ func parseConfig() {
 	}
 }
 
+func createMongolConnection(addr, token string) *grpc.ClientConn {
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if token != "" {
+		interceptor := grpcauth.NewClientInterceptor(token)
+		opts = append(opts, grpc.WithUnaryInterceptor(interceptor.Unary()))
+		opts = append(opts, grpc.WithStreamInterceptor(interceptor.Stream()))
+	}
+	conn, err := grpc.Dial(addr, opts...)
+	if err != nil {
+		logrus.Fatalf("dialing grpc: %v", err)
+	}
+	return conn
+}
+
+func createMongolProducer(cfg *common.ProxyConfig) *export.ProducerClient {
+	if cfg.Mongol == nil {
+		logrus.Info("Mongol exporter is disabled")
+		return nil
+	}
+	conn := createMongolConnection(cfg.Mongol.Addr, cfg.Mongol.Token)
+	return export.NewProducerClient(conn)
+}
+
 func parseProxyConfig() *common.ProxyConfig {
 	cfg := new(common.ProxyConfig)
 	if err := viper.Unmarshal(&cfg); err != nil {
@@ -95,8 +126,8 @@ func parseProxyConfig() *common.ProxyConfig {
 	return cfg
 }
 
-func runProxyManager(cfg *common.ProxyConfig) *proxy.Manager {
-	m, err := proxy.NewManager(cfg)
+func runProxyManager(cfg *common.ProxyConfig, producer *export.ProducerClient) *proxy.Manager {
+	m, err := proxy.NewManager(cfg, producer)
 	if err != nil {
 		logrus.Fatalf("Error creating proxy manager: %v", err)
 	}
