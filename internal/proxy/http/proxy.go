@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"go.uber.org/atomic"
 
 	"goxy/internal/common"
@@ -62,12 +61,30 @@ func NewProxy(cfg common.ServiceConfig, rs *filters.RuleSet, pc *export.Producer
 		"type":   "http",
 		"listen": cfg.Listen,
 	})
+	_, listenPortStr, err := net.SplitHostPort(cfg.Listen)
+	if err != nil {
+		return nil, fmt.Errorf("parsing listen addr: %w", err)
+	}
+	listenPort, err := strconv.Atoi(listenPortStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid listen port %s: %w", listenPortStr, err)
+	}
 	p := &Proxy{
 		ListenAddr: cfg.Listen,
 		Target:     target,
 		Name:       cfg.Name,
 
-		client:        &http.Client{Timeout: timeout},
+		client: &http.Client{
+			Timeout: timeout,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		binder: &streamBinder{
+			name:       cfg.Name,
+			listenPort: listenPort,
+			bindings:   make(map[string]streamBinding),
+		},
 		serviceConfig: cfg,
 		logger:        logger,
 		filters:       fts,
@@ -108,6 +125,7 @@ type Proxy struct {
 	Name       string
 	TLSConfig  *tls.Config
 
+	binder        *streamBinder
 	serviceConfig common.ServiceConfig
 	closing       bool
 	listening     *atomic.Bool
@@ -249,6 +267,7 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 			handleError(w)
 			return
 		}
+		r.Header.Set("Host", r.Host)
 
 		pctx := common.NewProxyContext()
 		reqEntity := &wrapper.Request{Request: r}
@@ -258,7 +277,7 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 			return
 		}
 
-		base := p.getBasePacket(r)
+		base := p.binder.GetOrCreate(r)
 		// Do not terminate export if request is terminated.
 		if err := p.exportEntity(context.Background(), reqEntity, base, reqLogger); err != nil {
 			reqLogger.Errorf("Error exporting packet: %v", err)
@@ -325,23 +344,6 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 	}
 }
 
-func (p *Proxy) getBasePacket(r *http.Request) *export.BasePacket {
-	srcHost, srcPort := splitAddrSafe(r.RemoteAddr, 0)
-	dstHost, dstPort := splitAddrSafe(r.Host, 0)
-
-	return &export.BasePacket{
-		Source: fmt.Sprintf("goxy-%s", p.Name),
-		Endpoints: &export.EndpointData{
-			IPSrc:   srcHost,
-			IPDst:   dstHost,
-			PortSrc: srcPort,
-			PortDst: dstPort,
-		},
-		Proto:            "tcp",
-		ProducerStreamID: uuid.New().String(),
-	}
-}
-
 func (p *Proxy) exportEntity(ctx context.Context, e wrapper.Entity, base *export.BasePacket, logger *logrus.Entry) error {
 	if p.producer == nil {
 		logger.Debug("Exporter is disabled")
@@ -385,7 +387,7 @@ func (p *Proxy) serve() {
 func splitAddrSafe(addr string, defPort int) (host string, port int) {
 	host, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
-		host = "0.0.0.0"
+		host = addr
 		port = defPort
 	} else {
 		if port, err = strconv.Atoi(portStr); err != nil {
